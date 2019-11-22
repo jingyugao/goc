@@ -10,3 +10,7 @@ enter:
 
 demo:force
 	gcc demo/ctx.S demo/demo.c -o bin/demo
+
+ctx:force
+	gcc context.c
+	./a.out
