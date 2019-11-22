@@ -123,21 +123,27 @@ Coroutine *NewCoroutine(void *fn) {
 
   return c;
 }
+void yield();
 
 int CoStart(Coroutine *c) { return GetContext(&c->ctx); }
 
+
+static int i=0;
+
+static int j=0;
+
 void f1() {
   while (1) {
-    printf("f1 %d is runing\n", getGID());
-    sleep(1);
+    printf("co%d %dis runing\n", getGID(),i);
     yield();
   }
 }
 
 void f2() {
   while (1) {
-    printf("f2 %d is runing\n", getGID());
-    sleep(1);
+    i++;
+   int gid= getGID();
+    printf("co%d %dis runing\n",gid ,i);
     yield();
   }
 }
@@ -156,9 +162,12 @@ typedef struct {
 void runqput(scheduler *p, Coroutine *g) {
   int h = p->runqhead;
   int t = p->runqtail;
+  printf("runqput:%d,%d\n",h,t);
 
-  if (t - h < (sizeof(p->runq) / sizeof(p->runq[0]))) {
-    p->runq[t] = g;
+  int size=(sizeof(p->runq) / sizeof(p->runq[0]));
+  if (t - h < size) {
+    printf("put\n");
+    p->runq[t%(size)] = g;
     p->runqtail = t + 1;
   }
 
@@ -171,8 +180,10 @@ Coroutine *runqget(scheduler *p) {
   if (p->runqhead == p->runqtail) {
     return NULL;
   }
+  int size=(sizeof(p->runq) / sizeof(p->runq[0]));
+  Coroutine *c=p->runq[p->runqhead%size];
   p->runqhead++;
-  return p->runq[p->runqhead - 1];
+  return c;
 }
 
 scheduler *getP() {
@@ -181,6 +192,7 @@ scheduler *getP() {
 };
 
 void yield() {
+  printf("yield\n");
   int gid = getGID();
   scheduler *p = getP();
   Coroutine *c = allCo[gid];
@@ -201,23 +213,26 @@ void yield() {
 };
 
 int getGID() {
+  printf("get gid\n");
   uintptr addr;
   addr = &addr;
 
   for (int i = 0; i < 1024; i++) {
+    printf("loop %d\n",i);
     Coroutine *c = allCo[i];
     if (!c) {
       continue;
     }
-
+     printf("c %p \n",c->stack.lo);
     if (c->stack.lo < addr && c->stack.hi > addr) {
+      printf("id:%d\n",c->id);
       return c->id;
     }
   }
   return -1;
 }
 
-int main() {
+int main() {  
   memset(allCo, 0, 1024 * sizeof(uintptr));
   scheduler *p = getP();
   memset(p, 0, sizeof(scheduler));
