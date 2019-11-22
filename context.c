@@ -113,24 +113,25 @@ int AllocGID()
 
 Coroutine *NewCoroutine(void *fn)
 {
-  Coroutine *c = malloc(sizeof(Coroutine));
-  memset(&c->ctx, 0, sizeof(Context));
-
-  int gid = AllocGID();
+    int gid = AllocGID();
   if (gid == -1)
   {
     return NULL;
   }
+  
+    int stackSize = (1 << 20);
+  uintptr stackTop = malloc(stackSize);
+  Coroutine *c = malloc(sizeof(Coroutine));
+  memset(&c->ctx, 0, sizeof(Context));
+
   allCo[gid] = c;
 
   c->id = gid;
   c->fn.fn = fn;
-  int stackSize = (1 << 20);
-  uintptr stackTop = malloc(stackSize);
   c->stack.lo = stackTop;
-  c->stack.hi = stackTop + stackSize;
+  c->stack.hi = stackTop + stackSize-sizeof(Coroutine);
   // align
-  c->ctx.reg.rsp = (long)c->stack.hi - 8 - (long)c->stack.hi % 16;
+  c->ctx.reg.rsp = (long)c->stack.hi - 8-  - (long)c->stack.hi % 16;
 
   c->ctx.reg.pc_addr = c->fn.fn;
 
@@ -189,7 +190,12 @@ scheduler *getP()
 
 void coExit()
 {
-  printf("co %d exit\n", getGID());
+  int gid=getGID();
+  Coroutine *g=allCo[gid];
+  free(g->stack.lo);
+  allCo[gid]=NULL;
+
+  printf("co %d exit\n", gid);
   scheduler *p = getP();
   while (1)
   {
@@ -249,11 +255,12 @@ int getGID()
 void f()
 {
   static int n = 0;
-  for (int i = 0; i < 1000; i++)
+  for (int i = 0; i < 10; i++)
   {
     sleep(1);
     n++;
     int gid = getGID();
+    printf("co%d is runing %d\n",gid,i);
     yield();
   }
   coExit();
@@ -264,11 +271,10 @@ int main(int argc)
   memset(allCo, 0, 1024 * sizeof(uintptr));
   scheduler *p = getP();
   memset(p, 0, sizeof(scheduler));
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 4; i++)
   {
     runqput(p, NewCoroutine(f));
   }
-  runqput(p, NewCoroutine(f));
   CoStart(runqget(p));
   printf("main return\n");
 }
