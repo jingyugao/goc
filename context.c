@@ -83,8 +83,8 @@ typedef struct {
 static Coroutine *allCo[1024];
 
 void SwitchTo(Coroutine *from, Coroutine *to) {
+  printf("switch %d to %d\n",from->id,to->id);
   int ret = SaveContext(&from->ctx);
-  printf("ret:%d\n", ret);
   if (ret == 0) {
     GetContext(&to->ctx);
   }
@@ -130,16 +130,7 @@ int CoStart(Coroutine *c) { return GetContext(&c->ctx); }
 
 static int i=0;
 
-static int j=0;
-
-void f1() {
-  while (1) {
-    printf("co%d %dis runing\n", getGID(),i);
-    yield();
-  }
-}
-
-void f2() {
+void f() {
   while (1) {
     i++;
    int gid= getGID();
@@ -166,7 +157,6 @@ void runqput(scheduler *p, Coroutine *g) {
 
   int size=(sizeof(p->runq) / sizeof(p->runq[0]));
   if (t - h < size) {
-    printf("put\n");
     p->runq[t%(size)] = g;
     p->runqtail = t + 1;
   }
@@ -196,7 +186,6 @@ void yield() {
   int gid = getGID();
   scheduler *p = getP();
   Coroutine *c = allCo[gid];
-  printf("gid:%d\n", gid);
   runqput(p, c);
 
   while (1) {
@@ -206,24 +195,24 @@ void yield() {
       printf("no co to run");
       continue;
     }
-    printf("gid:%d\n", c2->id);
     SwitchTo(c, c2);
     break;
   }
 };
 
 int getGID() {
-  printf("get gid\n");
+  printf("get gid begin\n");
+  sleep(1);
+  printf("get gid end\n");
+
   uintptr addr;
   addr = &addr;
 
   for (int i = 0; i < 1024; i++) {
-    printf("loop %d\n",i);
     Coroutine *c = allCo[i];
     if (!c) {
       continue;
     }
-     printf("c %p \n",c->stack.lo);
     if (c->stack.lo < addr && c->stack.hi > addr) {
       printf("id:%d\n",c->id);
       return c->id;
@@ -233,13 +222,14 @@ int getGID() {
 }
 
 int main() {  
+  sleep(1); // sleep需要某个  
   memset(allCo, 0, 1024 * sizeof(uintptr));
   scheduler *p = getP();
   memset(p, 0, sizeof(scheduler));
-  Coroutine *c1 = NewCoroutine(f1);
-  Coroutine *c2 = NewCoroutine(f2);
-  runqput(p, c1);
-  runqput(p, c2);
+  for (int i=0;i<10;i++){
+    runqput(p, NewCoroutine(f));
+  }
+
 
   CoStart(runqget(p));
 }
