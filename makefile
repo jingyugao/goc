@@ -1,7 +1,8 @@
 .PONY:force
 force:
-	
 
-test:force
-	gcc main.c call.c
+enter:
+	docker-compose exec linux /bin/bash
+ctx:force
+	gcc context.c	-std=c11
 	./a.out
