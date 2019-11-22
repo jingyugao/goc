@@ -21,9 +21,6 @@ typedef union {
   Register reg;
 } Context;
 
-
- 
-
 int SaveContext(Context *ctx) {
   __asm__("movq %%rbp, %%rsp;\n\t"
           "popq %%rbp;\n\t"
@@ -58,7 +55,7 @@ void GetContext(Context *ctx) {
           "movq 32(%%rdi),%%r13;\n\t"
           "movq 40(%%rdi),%%r14;\n\t"
           "movq 48(%%rdi),%%r15;\n\t"
-          "jmp *56(%%rdi);\n\t"
+          "jmpq *56(%%rdi);\n\t"
           :
           :
           : "rdi");
@@ -122,7 +119,9 @@ Coroutine *NewCoroutine(void *fn) {
   uintptr stackTop = malloc(stackSize);
   c->stack.lo = stackTop;
   c->stack.hi = stackTop + stackSize;
-  c->ctx.reg.rsp = c->stack.hi;
+  // align
+  c->ctx.reg.rsp = (long)c->stack.hi -8 -(long)c->stack.hi%16;
+ 
   c->ctx.reg.pc_addr = c->fn.fn;
 
   return c;
@@ -145,7 +144,6 @@ typedef struct {
 void runqput(scheduler *p, Coroutine *g) {
   int h = p->runqhead;
   int t = p->runqtail;
-  printf("runqput:%d,%d\n", h, t);
 
   int size = (sizeof(p->runq) / sizeof(p->runq[0]));
   if (t - h < size) {
@@ -153,7 +151,7 @@ void runqput(scheduler *p, Coroutine *g) {
     p->runqtail = t + 1;
   }
 
-  printf("%d %d\n", p->runqhead, p->runqtail);
+  // printf("%d %d\n", p->runqhead, p->runqtail);
   // put to global runq
 };
 
@@ -173,10 +171,9 @@ scheduler *getP() {
 };
 
 void coExit() {
-  printf("co %d exit\n",getGID());
+  printf("co %d exit\n", getGID());
   scheduler *p = getP();
   while (1) {
-    printf("getq\n");
     Coroutine *c = runqget(p);
     printf(" co null\n");
     if (c == NULL) {
@@ -207,10 +204,6 @@ void yield() {
 };
 
 int getGID() {
-  printf("sleep begin\n");
-  usleep(1000);
-  printf("sleep end\n");
-
   uintptr addr;
   addr = &addr;
 
@@ -226,31 +219,18 @@ int getGID() {
   return -1;
 }
 
-
-
-FILE * fd;
-
-
 void f() {
   static int n = 0;
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < 1000; i++) {
+    sleep(1);
     n++;
     int gid = getGID();
-    printf("write begin\n");
-    fprintf(fd,"co%d %dis runing\n", gid, n);
-    printf("write end\n");
     yield();
   }
   coExit();
 }
 
-
-
 int main(int argc) {
-  sleep(1);
-  usleep(1); // sleep需要某个
-  fd=fopen("123.txt","w");
-  fprintf(fd,"xxx");
   memset(allCo, 0, 1024 * sizeof(uintptr));
   scheduler *p = getP();
   memset(p, 0, sizeof(scheduler));
