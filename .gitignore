@@ -43,6 +43,8 @@
 *.idb
 *.pdb
 
+bin/
+
 # Kernel Module Compile Results
 *.mod*
 *.cmd
@@ -51,3 +53,5 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+!demo/ctx.S
