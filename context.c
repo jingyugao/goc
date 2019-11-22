@@ -1,5 +1,6 @@
 
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,6 +21,9 @@ typedef union {
   Register reg;
 } Context;
 
+
+ 
+
 int SaveContext(Context *ctx) {
   __asm__("movq %%rbp, %%rsp;\n\t"
           "popq %%rbp;\n\t"
@@ -34,18 +38,19 @@ int SaveContext(Context *ctx) {
           "movq %%r14,40(%0);\n\t"
           "movq %%r15,48(%0);\n\t"
           "movq %%rsi,56(%0);\n\t"
-          // "popq	%%rbp;\n\t"
           "ret;\n\t"
           :
           : "r"(ctx->buffer)
           : "%rax");
+  // never reach
+  assert(0);
+  return 0;
 };
 
-int GetContext(Context *ctx) {
+void GetContext(Context *ctx) {
   register Context *p1 __asm__("rdi") = ctx;
   __asm__("movq %%rbp, %%rsp;\n\t"
           "popq %%rbp;\n\t"
-          "movl $1,%%eax;\n\t"
           "movq (%%rdi),%%rbx;\n\t"
           "movq 8(%%rdi),%%rsp;\n\t"
           "movq 16(%%rdi),%%rbp;\n\t"
@@ -83,7 +88,7 @@ typedef struct {
 static Coroutine *allCo[1024];
 
 void SwitchTo(Coroutine *from, Coroutine *to) {
-  printf("switch %d to %d\n",from->id,to->id);
+  printf("switch %d to %d\n", from->id, to->id);
   int ret = SaveContext(&from->ctx);
   if (ret == 0) {
     GetContext(&to->ctx);
@@ -115,7 +120,6 @@ Coroutine *NewCoroutine(void *fn) {
   c->fn.fn = fn;
   int stackSize = (1 << 20);
   uintptr stackTop = malloc(stackSize);
-  printf("%d:%p,%p\n", gid, stackTop, stackTop + stackSize);
   c->stack.lo = stackTop;
   c->stack.hi = stackTop + stackSize;
   c->ctx.reg.rsp = c->stack.hi;
@@ -125,19 +129,7 @@ Coroutine *NewCoroutine(void *fn) {
 }
 void yield();
 
-int CoStart(Coroutine *c) { return GetContext(&c->ctx); }
-
-
-static int i=0;
-
-void f() {
-  while (1) {
-    i++;
-   int gid= getGID();
-    printf("co%d %dis runing\n",gid ,i);
-    yield();
-  }
-}
+void CoStart(Coroutine *c) { return GetContext(&c->ctx); }
 
 typedef struct WaitNode {
   Coroutine *c;
@@ -153,11 +145,11 @@ typedef struct {
 void runqput(scheduler *p, Coroutine *g) {
   int h = p->runqhead;
   int t = p->runqtail;
-  printf("runqput:%d,%d\n",h,t);
+  printf("runqput:%d,%d\n", h, t);
 
-  int size=(sizeof(p->runq) / sizeof(p->runq[0]));
+  int size = (sizeof(p->runq) / sizeof(p->runq[0]));
   if (t - h < size) {
-    p->runq[t%(size)] = g;
+    p->runq[t % (size)] = g;
     p->runqtail = t + 1;
   }
 
@@ -166,12 +158,11 @@ void runqput(scheduler *p, Coroutine *g) {
 };
 
 Coroutine *runqget(scheduler *p) {
-  printf("%d %d\n", p->runqhead, p->runqtail);
   if (p->runqhead == p->runqtail) {
     return NULL;
   }
-  int size=(sizeof(p->runq) / sizeof(p->runq[0]));
-  Coroutine *c=p->runq[p->runqhead%size];
+  int size = (sizeof(p->runq) / sizeof(p->runq[0]));
+  Coroutine *c = p->runq[p->runqhead % size];
   p->runqhead++;
   return c;
 }
@@ -181,18 +172,33 @@ scheduler *getP() {
   return &p;
 };
 
+void coExit() {
+  printf("co %d exit\n",getGID());
+  scheduler *p = getP();
+  while (1) {
+    printf("getq\n");
+    Coroutine *c = runqget(p);
+    printf(" co null\n");
+    if (c == NULL) {
+      sleep(1);
+      printf("no co to run\n");
+      continue;
+    }
+    CoStart(c);
+  }
+}
+
 void yield() {
   printf("yield\n");
   int gid = getGID();
   scheduler *p = getP();
   Coroutine *c = allCo[gid];
   runqput(p, c);
-
   while (1) {
     Coroutine *c2 = runqget(p);
     if (c2 == NULL) {
       sleep(1);
-      printf("no co to run");
+      printf("no co to run\n");
       continue;
     }
     SwitchTo(c, c2);
@@ -201,9 +207,9 @@ void yield() {
 };
 
 int getGID() {
-  printf("get gid begin\n");
-  sleep(1);
-  printf("get gid end\n");
+  printf("sleep begin\n");
+  usleep(1000);
+  printf("sleep end\n");
 
   uintptr addr;
   addr = &addr;
@@ -214,22 +220,44 @@ int getGID() {
       continue;
     }
     if (c->stack.lo < addr && c->stack.hi > addr) {
-      printf("id:%d\n",c->id);
       return c->id;
     }
   }
   return -1;
 }
 
-int main() {  
-  sleep(1); // sleep需要某个  
+
+
+FILE * fd;
+
+
+void f() {
+  static int n = 0;
+  for (int i = 0; i < 10; i++) {
+    n++;
+    int gid = getGID();
+    printf("write begin\n");
+    fprintf(fd,"co%d %dis runing\n", gid, n);
+    printf("write end\n");
+    yield();
+  }
+  coExit();
+}
+
+
+
+int main(int argc) {
+  sleep(1);
+  usleep(1); // sleep需要某个
+  fd=fopen("123.txt","w");
+  fprintf(fd,"xxx");
   memset(allCo, 0, 1024 * sizeof(uintptr));
   scheduler *p = getP();
   memset(p, 0, sizeof(scheduler));
-  for (int i=0;i<10;i++){
+  for (int i = 0; i < 10; i++) {
     runqput(p, NewCoroutine(f));
   }
-
-
+  runqput(p, NewCoroutine(f));
   CoStart(runqget(p));
+  printf("main return\n");
 }
