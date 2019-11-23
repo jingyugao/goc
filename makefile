@@ -3,6 +3,6 @@ force:
 
 enter:
 	docker-compose exec linux /bin/bash
-ctx:force
-	gcc context.c -g	-Wall -std=c11
+test:force
+	gcc runtime.c -g	-Wall -std=c11
 	./a.out
