@@ -3,7 +3,13 @@
 
 #define _StackMin (1 << 20)
 
-g *allCo[1024];
+g *allgs[1024];
+static g *g0;
+
+p *getP() {
+  static p p;
+  return &p;
+};
 
 void SwitchTo(g *from, g *to) {
   printf("switch %d to %d\n", from->id, to->id);
@@ -15,14 +21,14 @@ void SwitchTo(g *from, g *to) {
 
 int AllocGID() {
   for (int i = 1; i < 1024; i++) {
-    if (allCo[i] == NULL) {
+    if (allgs[i] == NULL) {
       return i;
     }
   }
   return -1;
 }
 
-g *malg(void *fn) {
+g *malg(Func fn) {
   int gid = AllocGID();
   if (gid == -1) {
     return NULL;
@@ -39,34 +45,33 @@ g *malg(void *fn) {
   g *c = stackTop;
   memset(&c->ctx, 0, sizeof(Context));
 
-  allCo[gid] = c;
+  allgs[gid] = c;
   c->id = gid;
-  c->fn.fn = fn;
+  c->fn = fn;
   c->stack.lo = stackTop;
   // align
   stackBase = stackBase - (long)stackBase % 16 - 8;
   c->stack.hi = stackBase;
   c->ctx.reg.rsp = stackBase;
 
-  c->ctx.reg.pc_addr = c->fn.fn;
+  c->ctx.reg.pc_addr = c->fn.f;
 
   return c;
 }
-void yield();
 
-void CoStart(g *c) { return GetContext(&c->ctx); }
+void CoStart(g *c) {
+  printf("co start %d,%d\n", c, g0);
+  Context ctx;
+  int ret = SaveContext(&g0->ctx);
+  printf("save ret:%d\n", ret);
 
-typedef struct WaitNode {
-  g *c;
-  struct WaitNode *next;
-} WaitNode;
-
-typedef struct {
-  g *g0;
-  int runqhead;
-  int runqtail;
-  g *runq[256];
-} p;
+  if (ret == 0) {
+    printf("get ctx\n");
+    GetContext(&c->ctx);
+  }
+  printf("costart ret:%d\n", ret);
+  return;
+}
 
 void runqput(p *p, g *g) {
   int h = p->runqhead;
@@ -90,31 +95,6 @@ g *runqget(p *p) {
   g *c = p->runq[p->runqhead % size];
   p->runqhead++;
   return c;
-}
-
-p *getP() {
-  static p p;
-  return &p;
-};
-
-void coExit() {
-  int gid = getg()->id;
-  g *curg = allCo[gid];
-  free(curg->stack.lo);
-  allCo[gid] = NULL;
-
-  printf("co %d exit\n", gid);
-  p *p = getP();
-  while (1) {
-    g *nextg = runqget(p);
-    printf(" co null\n");
-    if (nextg == NULL) {
-      sleep(1);
-      printf("no co to run\n");
-      continue;
-    }
-    CoStart(nextg);
-  }
 }
 
 void yield() {
@@ -150,15 +130,9 @@ g *getg() {
   *(int *)(NULL) = 1;
   return NULL;
 }
-void wrap() {
 
-  void (*pf)();
-  pf = getg()->fn.fn;
-  //   if (fn) {
-  pf(123);
-  //   }
-}
-void f() {
+void f(void *arg) {
+  printf("f");
   static int n = 0;
   for (int i = 0; i < 10; i++) {
     usleep(1000);
@@ -168,36 +142,94 @@ void f() {
     printf("co%d is runing %d\n", gid, i);
     yield();
   }
-  coExit();
 }
 
-static g *g0;
-
-void mcall(void *fn) {
-  g0->fn.fn = fn;
-  printf("call\n");
-  CoStart(g0);
-  printf("exit\n");
-};
-
-void schedinit() {}
-
-void systemstack(void (*fn)()) {}
-
-void main_main() { printf("main_main\n"); }
-int main(int argc) {
-  //   sleep(1);
-  printf("alloc g\n");
-  g0 = malg(NULL);
-
-  schedinit();
-  memset(allCo, 0, 1024 * sizeof(uintptr));
-  p *p = getP();
-
-  memset(p, 0, sizeof(p));
-  for (int i = 0; i < 4; i++) {
-    runqput(p, malg(f));
+void systemstack(Func fn) {
+  printf("systemstack\n");
+  g0->fn = fn;
+  int ret = SaveContext(&g0->ctx);
+  printf("ret:%d\n", ret);
+  if (ret == 0) {
+    printf("%d\n", g0->fn.f);
+    g0->fn.f(g0->fn.arg);
+    GetContext(&g0->ctx);
   }
-  CoStart(runqget(p));
+}
+
+g *newproc1(Func fn) {
+  printf("newproc1\n");
+  g *newg = malg(fn);
+  // newg->fn = fn;
+  // newg->ctx.reg.pc_addr = newg->fn.f;
+  // int gid = AllocGID();
+  // allgs[gid] = newg;
+  // newg->id = gid;
+  runqput(getP(), newg);
+  return newg;
+}
+
+void newproc(void (*f)(void *), void *arg) {
+  printf("new proc\n");
+  Func fn;
+  Func *fn2 = malloc(sizeof(Func));
+  fn2->f = f;
+  fn2->arg = arg;
+  fn.arg = fn2;
+  fn.f = newproc1;
+  systemstack(fn);
+  printf("systemstack end\n");
+}
+
+void schedinit() { printf("schedinit\n"); }
+
+void mstart() {
+  g *_g_ = getg();
+  int ret = SaveContext(&_g_->ctx);
+  if (ret == 0) {
+    GetContext(&_g_->ctx);
+  }
+}
+
+void main_main(void *arg) {
+  printf("main_main\n");
+  GetContext(&g0->ctx);
+  return;
+  for (int i = 0; i < 4; i++) {
+    newproc(f, NULL);
+    printf("newproc end\n");
+  }
+  yield();
   printf("main return\n");
+}
+
+int main(int argc) {
+  memset(allgs, 0, 1024 * sizeof(uintptr));
+  p *p = getP();
+  memset(p, 0, sizeof(p));
+
+  Func fg0;
+  g0 = malg(fg0);
+  allgs[0] = g0;
+  schedinit();
+
+  Func fmm;
+
+  fmm.f = main_main;
+  g *gmm = malg(fmm);
+  printf("save ctx\n");
+  int ret = SaveContext(&g0->ctx);
+  printf("ret:%d\n",ret);
+  if (ret == 0) {
+    GetContext(&gmm->ctx);
+  }
+
+  printf("exit\n");
+  return 0;
+
+  newproc(main_main, NULL);
+  CoStart(runqget(p));
+  return 0;
+  g *ng = runqget(p);
+
+  GetContext(&ng->ctx);
 }

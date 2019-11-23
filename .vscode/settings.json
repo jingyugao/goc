@@ -4,6 +4,7 @@
         "string.h": "c",
         "__locale": "c",
         "locale": "c",
-        "malloc.h": "c"
+        "malloc.h": "c",
+        "ios": "c"
     }
 }

@@ -11,13 +11,10 @@
 
 typedef struct
 {
-    void (*fn)();
+    void (*f)(void*);
+    void *arg;
 } Func;
 
-typedef struct
-{
-    void *args;
-} Args;
 
 typedef struct
 {
@@ -30,11 +27,18 @@ typedef struct
     int id;
     Context ctx;
     Func fn;
-    Args args;
     Stack stack;
 } g;
 
-extern g *allCo[1024];
+typedef struct {
+  g *g0;
+  int runqhead;
+  int runqtail;
+  g *runq[256];
+} p;
+
+
+extern g *allgs[1024];
 
 g *getg();
 
