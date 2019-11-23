@@ -1,7 +1,7 @@
 
 #include "runtime.h"
 
-#define _StackMin 1 << 20
+#define _StackMin (1 << 20)
 
 g *allCo[1024];
 
@@ -43,9 +43,9 @@ g *malg(void *fn) {
   c->id = gid;
   c->fn.fn = fn;
   c->stack.lo = stackTop;
-  c->stack.hi = stackBase;
   // align
   stackBase = stackBase - (long)stackBase % 16 - 8;
+  c->stack.hi = stackBase;
   c->ctx.reg.rsp = stackBase;
 
   c->ctx.reg.pc_addr = c->fn.fn;
@@ -62,12 +62,13 @@ typedef struct WaitNode {
 } WaitNode;
 
 typedef struct {
+  g *g0;
   int runqhead;
   int runqtail;
   g *runq[256];
-} scheduler;
+} p;
 
-void runqput(scheduler *p, g *g) {
+void runqput(p *p, g *g) {
   int h = p->runqhead;
   int t = p->runqtail;
 
@@ -81,7 +82,7 @@ void runqput(scheduler *p, g *g) {
   // put to global runq
 };
 
-g *runqget(scheduler *p) {
+g *runqget(p *p) {
   if (p->runqhead == p->runqtail) {
     return NULL;
   }
@@ -91,8 +92,8 @@ g *runqget(scheduler *p) {
   return c;
 }
 
-scheduler *getP() {
-  static scheduler p;
+p *getP() {
+  static p p;
   return &p;
 };
 
@@ -103,7 +104,7 @@ void coExit() {
   allCo[gid] = NULL;
 
   printf("co %d exit\n", gid);
-  scheduler *p = getP();
+  p *p = getP();
   while (1) {
     g *nextg = runqget(p);
     printf(" co null\n");
@@ -119,9 +120,7 @@ void coExit() {
 void yield() {
   printf("yield\n");
   g *curg = getg();
-
-  scheduler *p = getP();
-
+  p *p = getP();
   runqput(p, curg);
   while (1) {
     g *nextg = runqget(p);
@@ -141,18 +140,24 @@ void yield() {
 #define GETRSP(v) __asm__("movq %%rsp, %0;" : : "m"(c) :)
 
 g *getg() {
-  __asm__(
-      "movq $-1<<20,%%rax\n\t"
-      "andq %%rsp, %%rax;\n\t"
-      "popq	%%rbp;\n\t"
-	  "retq;\n\t"
-      : 
-      :
-      :);
-
+  __asm__("movq $-1<<20,%%rax\n\t"
+          "andq %%rsp, %%rax;\n\t"
+          "popq	%%rbp;\n\t"
+          "retq;\n\t"
+          :
+          :
+          :);
+  *(int *)(NULL) = 1;
   return NULL;
 }
+void wrap() {
 
+  void (*pf)();
+  pf = getg()->fn.fn;
+  //   if (fn) {
+  pf(123);
+  //   }
+}
 void f() {
   static int n = 0;
   for (int i = 0; i < 10; i++) {
@@ -166,19 +171,30 @@ void f() {
   coExit();
 }
 
-void rt0_lib_go() {
-  uintptr c;
-  GETRSP(c);
-  c = ALIGN(c, _StackMin);
-  printf("%p", c);
-}
+static g *g0;
 
+void mcall(void *fn) {
+  g0->fn.fn = fn;
+  printf("call\n");
+  CoStart(g0);
+  printf("exit\n");
+};
+
+void schedinit() {}
+
+void systemstack(void (*fn)()) {}
+
+void main_main() { printf("main_main\n"); }
 int main(int argc) {
-  //   rt0_lib_go();
-  //   return 0;
+  //   sleep(1);
+  printf("alloc g\n");
+  g0 = malg(NULL);
+
+  schedinit();
   memset(allCo, 0, 1024 * sizeof(uintptr));
-  scheduler *p = getP();
-  memset(p, 0, sizeof(scheduler));
+  p *p = getP();
+
+  memset(p, 0, sizeof(p));
   for (int i = 0; i < 4; i++) {
     runqput(p, malg(f));
   }

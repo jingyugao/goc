@@ -4,11 +4,11 @@
 
 typedef struct
 {
-    uintptr rbx, rsp, rbp, r12, r13, r14, r15, pc_addr;
+    uintptr rbx, rsp, rbp, r12, r13, r14, r15, pc_addr,ret_addr;
 } Register;
 
 typedef union {
-    uintptr buffer[8];
+    uintptr buffer[9];
     Register reg;
 } Context;
 

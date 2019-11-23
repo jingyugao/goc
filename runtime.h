@@ -11,7 +11,7 @@
 
 typedef struct
 {
-    void *fn;
+    void (*fn)();
 } Func;
 
 typedef struct
