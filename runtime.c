@@ -213,23 +213,19 @@ int main(int argc) {
   schedinit();
 
   Func fmm;
-
   fmm.f = main_main;
-  g *gmm = malg(fmm);
-  printf("save ctx\n");
-  int ret = SaveContext(&g0->ctx);
-  printf("ret:%d\n",ret);
-  if (ret == 0) {
-    GetContext(&gmm->ctx);
+
+  for (int i = 0; i < 4; i++) {
+    newproc1(fmm);
   }
 
+  printf("save ctx\n");
+  int ret = SaveContext(&g0->ctx);
+  printf("ret:%d\n", ret);
+  if (ret == 0) {
+    GetContext(&runqget(p)->ctx);
+  }
+  GetContext(&g0->ctx);
   printf("exit\n");
   return 0;
-
-  newproc(main_main, NULL);
-  CoStart(runqget(p));
-  return 0;
-  g *ng = runqget(p);
-
-  GetContext(&ng->ctx);
 }
