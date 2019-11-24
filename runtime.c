@@ -136,20 +136,6 @@ g *getg() {
   return NULL;
 }
 
-void f(void *arg) {
-  printf("f");
-  static int n = 0;
-  for (int i = 0; i < 10; i++) {
-    usleep(1000);
-    n++;
-    int gid = getg()->id;
-    printf("gid %d", gid);
-    printf("co%d is runing %d\n", gid, i);
-    yield();
-  }
-  printf("g %d exit\n", getg()->id);
-}
-
 void systemstack(Func fn) {
   printf("systemstack\n");
   g0->fn = fn;
@@ -189,16 +175,7 @@ void newproc(void (*f)(void *), void *arg) {
 
 void schedinit() { printf("schedinit\n"); }
 
-// user main go routinue
-void main_main() {
-  for (int i = 0; i < 4; i++) {
-    newproc(f, NULL);
-    printf("newproc end\n");
-  }
-  for (int i = 0; i < 10; i++) {
-    yield();
-  }
-}
+int main_main();
 
 void sched(void *arg) {
   printf("main_main\n");
@@ -232,6 +209,7 @@ void mstart() {
   mstart1();
   exit(0);
 }
+
 // really main
 int asm_main() {
   printf("asm main\n");
@@ -256,6 +234,10 @@ int asm_main() {
 }
 
 int main() {
+  if (!g0) {
+    printf("main must called after asm_main\n");
+    exit(1);
+  }
   main_main();
 
   exit(0);

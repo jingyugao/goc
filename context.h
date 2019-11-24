@@ -11,7 +11,7 @@ typedef union {
     Register reg;
 } Context;
 
-int SaveContext(Context *ctx)
+static int SaveContext(Context *ctx)
 {
     __asm__(
         "leaveq;\n\t"
@@ -35,7 +35,7 @@ int SaveContext(Context *ctx)
     return 0;
 };
 
-void GetContext(Context *ctx)
+static void GetContext(Context *ctx)
 {
     // rdi is the first parameter
     __asm__(
