@@ -52,5 +52,7 @@ extern g *allgs[1024];
 g *getg();
 
 void gsleep(int64 sec);
+void newproc(void (*f)(void *), void *arg);
+
 
 #endif

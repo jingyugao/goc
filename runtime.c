@@ -131,7 +131,6 @@ void systemstack(Func fn) {
   }
 }
 
-void newproc(void (*f)(void *), void *arg);
 g *newproc1(Func fn);
 
 g *newproc1(Func fn) {
