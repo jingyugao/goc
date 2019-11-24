@@ -113,7 +113,7 @@ void goexit1() { mcall(goexit1); }
 void yield() {
   g *curg = getg();
   p *p = getP();
-
+  runqput(p, curg);
   casgstatus(curg, curg->atomicstatus, _Grunnable);
   SwitchTo(curg, g0);
   return;
@@ -195,8 +195,9 @@ void main_main() {
     newproc(f, NULL);
     printf("newproc end\n");
   }
-  yield();
-  goexit1();
+  for (int i = 0; i < 10; i++) {
+    yield();
+  }
 }
 
 void sched(void *arg) {
@@ -225,6 +226,12 @@ void gsleep(int64 sec) {
   yield();
 }
 
+void mstart1() { GetContext(&g0->ctx); }
+
+void mstart() {
+  mstart1();
+  exit(0);
+}
 // really main
 int asm_main() {
   printf("asm main\n");
@@ -242,13 +249,16 @@ int asm_main() {
   g0->ctx.reg.pc_addr = g0->fn.f;
 
   schedinit();
-  GetContext(&g0->ctx);
+  newproc(main, NULL);
 
-  main();
+  mstart();
   return 0;
 }
 
 int main() {
+  main_main();
+
+  exit(0);
   *(int *)0;
   return 0;
 }
