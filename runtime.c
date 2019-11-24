@@ -4,6 +4,8 @@
 #include "time.h"
 
 #define _StackMin (1 << 20)
+#define ALIGN(p, alignbytes)                                                   \
+  ((void *)(((unsigned long)(p) + (alignbytes)-1) & ~((alignbytes)-1)))
 
 int main();
 g *allgs[1024];
@@ -53,24 +55,11 @@ g *malg() {
 
   c->stack.lo = stackTop;
   // align
-  stackBase = stackBase - (long)stackBase % 16 - 8;
+  stackBase = ALIGN(stackBase, 16) - 8;
   c->stack.hi = stackBase;
   c->ctx.reg.rsp = stackBase;
 
   return c;
-}
-
-void CoStart(g *c) {
-  printf("co start %d,%d\n", c, g0);
-  Context ctx;
-  int ret = SaveContext(&g0->ctx);
-  printf("save ret:%d\n", ret);
-  if (ret == 0) {
-    printf("get ctx\n");
-    GetContext(&c->ctx);
-  }
-  printf("costart ret:%d\n", ret);
-  return;
 }
 
 void runqput(p *p, g *g) {
@@ -83,7 +72,6 @@ void runqput(p *p, g *g) {
     p->runqtail = t + 1;
   }
 
-  // printf("%d %d\n", p->runqhead, p->runqtail);
   // put to global runq
 };
 
@@ -118,11 +106,6 @@ void yield() {
   SwitchTo(curg, g0);
   return;
 };
-
-#define ALIGN(p, alignbytes)                                                   \
-  ((void *)(((unsigned long)(p) + (alignbytes)-1) & ~((alignbytes)-1)))
-
-#define GETRSP(v) __asm__("movq %%rsp, %0;" : : "m"(c) :)
 
 g *getg() {
   __asm__("movq $-1<<20,%%rax\n\t"
