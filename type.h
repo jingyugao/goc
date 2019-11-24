@@ -7,6 +7,4 @@
 #define byte unsigned char
 #define uint32 uint32_t
 
-
-
 #endif

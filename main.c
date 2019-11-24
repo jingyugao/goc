@@ -1,30 +1,32 @@
 #include "runtime.h"
 
+int num = 0;
+
+void f2(int *arg) {
+  (*arg)++;
+  int gid = getg()->id;
+};
 
 void f(void *arg) {
-  printf("f");
-  static int n = 0;
   for (int i = 0; i < 10; i++) {
-    usleep(1000);
-    n++;
+    usleep(10000);
+    num++;
     int gid = getg()->id;
-    printf("gid %d", gid);
-    printf("co%d is runing %d\n", gid, i);
+    printf("g%d is runing %d\n", gid, i);
     yield();
+    newproc(f2, &i);
   }
-  printf("g %d exit\n", getg()->id);
 }
 
 int main() __asm__("_main_main");
 
 // user main go routinue
 int main() {
-  for (int i = 0; i < 4; i++) {
-    newproc(f, NULL);
-    printf("newproc end\n");
-  }
   for (int i = 0; i < 10; i++) {
+    newproc(f, NULL);
+  }
+  for (int i = 0; i < 1000; i++) {
     yield();
   }
+  printf("ret :%d\n", num);
 }
-

@@ -18,7 +18,7 @@ p *getP() {
 
 void SwitchTo(g *from, g *to) {
 
-  printf("switch %d to %d\n", from->id, to->id);
+  // printf("switch %d to %d\n", from->id, to->id);
   int ret = SaveContext(&from->ctx);
   if (ret == 0) {
     GetContext(&to->ctx);
@@ -96,7 +96,12 @@ void goexit0(g *gp) {
   GetContext(&g0->ctx);
 }
 
-void goexit1() { mcall(goexit1); }
+void goexit1() { mcall(goexit0); }
+
+void goexit() {
+  printf("g %d exit\n", getg()->id);
+  goexit1();
+}
 
 void yield() {
   g *curg = getg();
@@ -140,17 +145,27 @@ g *newproc1(Func fn) {
   int gid = AllocGID();
   newg->id = gid;
   newg->fn = fn;
+  newg->ctx.reg.rdi = newg->fn.arg;
   newg->ctx.reg.pc_addr = newg->fn.f;
   casgstatus(newg, newg->atomicstatus, _Grunnable);
   runqput(getP(), newg);
   return newg;
 }
 
+// todo:use asm
+void wrap_f(Func *fn) {
+  fn->f(fn->arg);
+  goexit();
+}
+
 void newproc(void (*f)(void *), void *arg) {
   g *gp = getg();
   Func fn;
-  fn.f = f;
-  fn.arg = arg;
+  fn.f = wrap_f;
+  Func *f2 = malloc(sizeof(Func));
+  f2->arg = arg;
+  f2->f = f;
+  fn.arg = f2;
   newproc1(fn);
   return;
 }
@@ -161,8 +176,6 @@ int main_main();
 
 void sched(void *arg) {
   printf("main_main\n");
-
-  newproc(main_main, NULL);
 
   while (1) {
     g *nextg = runqget(getP());
