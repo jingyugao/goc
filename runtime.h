@@ -49,16 +49,13 @@ g *getg();
 void gsleep(int64 sec);
 void newproc(void (*f)(void *), void *arg);
 void goexit();
-
-
+void yield();
 
 #define create(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
 
+#define CREATE_2(x, y) newproc(x, y)
+#define CREATE_1(x) newproc(x, NULL)
 
- 
-
- 
- 
-
+#define go create
 
 #endif

@@ -14,7 +14,7 @@ void f(void *arg) {
     int gid = getg()->id;
     printf("g%d is runing %d\n", gid, i);
     yield();
-    newproc(f2, &i);
+    go(f2, &i);
   }
 }
 
