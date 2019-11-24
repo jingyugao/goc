@@ -4,5 +4,6 @@ force:
 enter:
 	docker-compose exec linux /bin/bash
 test:force
-	gcc runtime.c -g	-Wall -std=c11
+	gcc -g 	-Wall -std=c11 -e _rt0_go runtime.c main.c
 	./a.out
+ 
