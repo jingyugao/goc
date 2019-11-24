@@ -11,4 +11,7 @@ enter:
 test:force
 	gcc -g 	-Wall -std=c11 -e _rt0_go runtime.c main.c
 	./a.out
+demo:force
+	gcc -std=c11 demo.c 
+	./a.out
  
