@@ -1,8 +1,11 @@
 
 #include "runtime.h"
 
+#include "time.h"
+
 #define _StackMin (1 << 20)
 
+int main();
 g *allgs[1024];
 static g *g0;
 
@@ -12,6 +15,7 @@ p *getP() {
 };
 
 void SwitchTo(g *from, g *to) {
+
   printf("switch %d to %d\n", from->id, to->id);
   int ret = SaveContext(&from->ctx);
   if (ret == 0) {
@@ -19,21 +23,23 @@ void SwitchTo(g *from, g *to) {
   }
 }
 
+static int gid = 1;
 int AllocGID() {
-  for (int i = 1; i < 1024; i++) {
+  gid++;
+  return gid;
+}
+void allgadd(g *gp) {
+  for (int i = 0; i < 1024; i++) {
     if (allgs[i] == NULL) {
-      return i;
+      allgs[i] = gp;
+      return;
     }
   }
-  return -1;
+  assert(0);
+  return;
 }
 
-g *malg(Func fn) {
-  int gid = AllocGID();
-  if (gid == -1) {
-    return NULL;
-  }
-
+g *malg() {
   int stackSize = _StackMin;
   uintptr stackTop;
 
@@ -45,17 +51,11 @@ g *malg(Func fn) {
   g *c = stackTop;
   memset(&c->ctx, 0, sizeof(Context));
 
-  allgs[gid] = c;
-  c->id = gid;
-  c->fn = fn;
-  printf("malg:%p\n", c->fn.f);
   c->stack.lo = stackTop;
   // align
   stackBase = stackBase - (long)stackBase % 16 - 8;
   c->stack.hi = stackBase;
   c->ctx.reg.rsp = stackBase;
-
-  c->ctx.reg.pc_addr = c->fn.f;
 
   return c;
 }
@@ -65,7 +65,6 @@ void CoStart(g *c) {
   Context ctx;
   int ret = SaveContext(&g0->ctx);
   printf("save ret:%d\n", ret);
-
   if (ret == 0) {
     printf("get ctx\n");
     GetContext(&c->ctx);
@@ -98,21 +97,26 @@ g *runqget(p *p) {
   return c;
 }
 
+void casgstatus(g *gp, uint32 oldval, uint32 newval) {
+  gp->atomicstatus = newval;
+}
+
+void mcall(void (*p)(g *)) { p(getg()); }
+
+void goexit0(g *gp) {
+  casgstatus(gp, gp->atomicstatus, _Gdead);
+  GetContext(&g0->ctx);
+}
+
+void goexit1() { mcall(goexit1); }
+
 void yield() {
-  printf("yield\n");
   g *curg = getg();
   p *p = getP();
-  runqput(p, curg);
-  while (1) {
-    g *nextg = runqget(p);
-    if (nextg == NULL) {
-      sleep(1);
-      printf("no co to run\n");
-      continue;
-    }
-    SwitchTo(curg, nextg);
-    break;
-  }
+
+  casgstatus(curg, curg->atomicstatus, _Grunnable);
+  SwitchTo(curg, g0);
+  return;
 };
 
 #define ALIGN(p, alignbytes)                                                   \
@@ -143,7 +147,6 @@ void f(void *arg) {
     printf("co%d is runing %d\n", gid, i);
     yield();
   }
-  yield();
   printf("g %d exit\n", getg()->id);
 }
 
@@ -159,97 +162,93 @@ void systemstack(Func fn) {
   }
 }
 
+void newproc(void (*f)(void *), void *arg);
 g *newproc1(Func fn);
-
-g *newproc2(void (*f)(void *), void *arg) {
-  g *gp = getg();
-  Func fn;
-  fn.f = f;
-  fn.arg = arg;
-  printf("newproc2:%p\n", f);
-  return newproc1(fn);
-}
 
 g *newproc1(Func fn) {
   printf("newproc1\n");
-  g *newg = malg(fn);
-  // newg->fn = fn;
-  // newg->ctx.reg.pc_addr = newg->fn.f;
-  // int gid = AllocGID();
-  // allgs[gid] = newg;
-  // newg->id = gid;
+  g *newg = malg();
+  allgadd(newg);
+  int gid = AllocGID();
+  newg->id = gid;
+  newg->fn = fn;
+  newg->ctx.reg.pc_addr = newg->fn.f;
+  casgstatus(newg, newg->atomicstatus, _Grunnable);
   runqput(getP(), newg);
   return newg;
 }
 
 void newproc(void (*f)(void *), void *arg) {
-  printf("new proc\n");
+  g *gp = getg();
   Func fn;
-  Func *fn2 = malloc(sizeof(Func));
-  fn2->f = f;
-  fn2->arg = arg;
-  fn.arg = fn2;
-  fn.f = newproc1;
-  systemstack(fn);
-  printf("systemstack end\n");
+  fn.f = f;
+  fn.arg = arg;
+  newproc1(fn);
+  return;
 }
 
 void schedinit() { printf("schedinit\n"); }
 
-void mstart() {
-  g *_g_ = getg();
-  int ret = SaveContext(&_g_->ctx);
-  if (ret == 0) {
-    GetContext(&_g_->ctx);
-  }
-}
-
+// user main go routinue
 void main_main() {
   for (int i = 0; i < 4; i++) {
-    newproc2(f, NULL);
+    newproc(f, NULL);
     printf("newproc end\n");
   }
   yield();
+  goexit1();
 }
 
 void sched(void *arg) {
   printf("main_main\n");
-  // GetContext(&g0->ctx);
-  // return;
-  main_main();
+
+  newproc(main_main, NULL);
+
+  while (1) {
+    g *nextg = runqget(getP());
+    if (nextg == NULL) {
+      sleep(1);
+      printf("no co to run\n");
+      continue;
+    }
+    SwitchTo(g0, nextg);
+  }
+
   printf("main return\n");
   exit(0);
 }
 
-int main(int argc) {
+void gsleep(int64 sec) {
+  g *gp = getg();
+  gp->when = nanotime() + sec * 1000000000;
+  casgstatus(gp, gp->atomicstatus, _Gwaiting);
+  yield();
+}
+
+// really main
+int asm_main() {
+  printf("asm main\n");
   memset(allgs, 0, 1024 * sizeof(uintptr));
   p *p = getP();
   memset(p, 0, sizeof(p));
 
+  // init g0
   Func fg0;
   fg0.f = sched;
-  g0 = malg(fg0);
+  g0 = malg();
   allgs[0] = g0;
-  schedinit();
+  g0->id = 0;
+  g0->fn = fg0;
+  g0->ctx.reg.pc_addr = g0->fn.f;
 
+  schedinit();
   GetContext(&g0->ctx);
 
-  for (int i = 0; i < 4; i++) {
-    newproc2(f, NULL);
-  }
-
-  CoStart(runqget(p));
-  printf("main return\n");
+  main();
   return 0;
-  CoStart(p);
+}
 
-  printf("save ctx\n");
-  int ret = SaveContext(&g0->ctx);
-  printf("ret:%d\n", ret);
-  if (ret == 0) {
-    GetContext(&runqget(p)->ctx);
-  }
-
-  printf("exit\n");
+int main() {
+  *(int *)0;
   return 0;
 }
