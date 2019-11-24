@@ -211,7 +211,7 @@ void mstart() {
 }
 
 // really main
-int asm_main() {
+int rt0_go() {
   printf("asm main\n");
   memset(allgs, 0, 1024 * sizeof(uintptr));
   p *p = getP();
@@ -235,7 +235,7 @@ int asm_main() {
 
 int main() {
   if (!g0) {
-    printf("main must called after asm_main\n");
+    printf("main must called after rt0_go\n");
     exit(1);
   }
   main_main();
