@@ -10,7 +10,7 @@ int f(){
 }
 
 int main() {
-  exit(1);
+
   for (int i=0;i<100;i++){
   int64 t=cputicks();
   printf("%lld\n",t);

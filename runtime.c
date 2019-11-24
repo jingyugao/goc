@@ -48,6 +48,7 @@ g *malg(Func fn) {
   allgs[gid] = c;
   c->id = gid;
   c->fn = fn;
+  printf("malg:%p\n", c->fn.f);
   c->stack.lo = stackTop;
   // align
   stackBase = stackBase - (long)stackBase % 16 - 8;
@@ -142,6 +143,8 @@ void f(void *arg) {
     printf("co%d is runing %d\n", gid, i);
     yield();
   }
+  yield();
+  printf("g %d exit\n", getg()->id);
 }
 
 void systemstack(Func fn) {
@@ -154,6 +157,17 @@ void systemstack(Func fn) {
     g0->fn.f(g0->fn.arg);
     GetContext(&g0->ctx);
   }
+}
+
+g *newproc1(Func fn);
+
+g *newproc2(void (*f)(void *), void *arg) {
+  g *gp = getg();
+  Func fn;
+  fn.f = f;
+  fn.arg = arg;
+  printf("newproc2:%p\n", f);
+  return newproc1(fn);
 }
 
 g *newproc1(Func fn) {
@@ -190,16 +204,21 @@ void mstart() {
   }
 }
 
-void main_main(void *arg) {
-  printf("main_main\n");
-  GetContext(&g0->ctx);
-  return;
+void main_main() {
   for (int i = 0; i < 4; i++) {
-    newproc(f, NULL);
+    newproc2(f, NULL);
     printf("newproc end\n");
   }
   yield();
+}
+
+void sched(void *arg) {
+  printf("main_main\n");
+  // GetContext(&g0->ctx);
+  // return;
+  main_main();
   printf("main return\n");
+  exit(0);
 }
 
 int main(int argc) {
@@ -208,16 +227,21 @@ int main(int argc) {
   memset(p, 0, sizeof(p));
 
   Func fg0;
+  fg0.f = sched;
   g0 = malg(fg0);
   allgs[0] = g0;
   schedinit();
 
-  Func fmm;
-  fmm.f = main_main;
+  GetContext(&g0->ctx);
 
   for (int i = 0; i < 4; i++) {
-    newproc1(fmm);
+    newproc2(f, NULL);
   }
+
+  CoStart(runqget(p));
+  printf("main return\n");
+  return 0;
+  CoStart(p);
 
   printf("save ctx\n");
   int ret = SaveContext(&g0->ctx);
@@ -225,7 +249,7 @@ int main(int argc) {
   if (ret == 0) {
     GetContext(&runqget(p)->ctx);
   }
-  GetContext(&g0->ctx);
+
   printf("exit\n");
   return 0;
 }
