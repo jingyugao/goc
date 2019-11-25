@@ -19,6 +19,9 @@
         "ratio": "cpp",
         "tuple": "cpp",
         "utility": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "panic.h": "c",
+        "runtime.h": "c",
+        "type.h": "c"
     }
 }

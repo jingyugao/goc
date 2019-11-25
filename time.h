@@ -4,7 +4,7 @@
 #include "type.h"
 #include <time.h>
 
-#define Nanosecond 1
+#define Nanosecond (long long)1
 #define Microsecond (1000 * Nanosecond)
 #define Millisecond (1000 * Microsecond)
 #define Second (1000 * Millisecond)
