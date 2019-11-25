@@ -1,6 +1,9 @@
 #include "runtime.h"
+#include "time.h"
 
 int num = 0;
+
+void doSomeThingBusy();
 
 void f2(int *arg) {
   (*arg)++;
@@ -13,7 +16,7 @@ void f(void *arg) {
     num++;
     int gid = getg()->id;
     printf("g%d is runing %d\n", gid, i);
-    yield();
+    Gosched();
     newproc(f2, &i);
   }
 }
@@ -25,8 +28,8 @@ int main() {
   for (int i = 0; i < 10; i++) {
     newproc(f, NULL);
   }
-  for (int i = 0; i < 1000; i++) {
-    yield();
-  }
+
+
+  timeSleep(Second);
   printf("ret :%d\n", num);
 }

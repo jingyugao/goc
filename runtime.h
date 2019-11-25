@@ -46,14 +46,9 @@ extern g *allgs[1024];
 
 g *getg();
 
-void gsleep(int64 sec);
+void timeSleep(int64 ns);
 void newproc(void (*f)(void *), void *arg);
 void goexit();
-
-
-
-#define create(...) MACRO_CHOOSER(__VA_ARGS__)(__VA_ARGS__)
-
 
  
 

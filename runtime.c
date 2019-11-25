@@ -66,6 +66,10 @@ g *malg() {
 }
 
 void runqput(p *p, g *g) {
+  if (g->id == 0) {
+    backtrace();
+    exit(1);
+  }
   int h = p->runqhead;
   int t = p->runqtail;
 
@@ -106,7 +110,7 @@ void goexit() {
   goexit1();
 }
 
-void yield() {
+void Gosched() {
   g *curg = getg();
   p *p = getP();
   runqput(p, curg);
@@ -168,11 +172,27 @@ void schedinit() { printf("schedinit\n"); }
 
 int main_main();
 
+g *findRunnable() {
+  while (1) {
+    int64 now = nanotime();
+    g *nextg = runqget(getP());
+    if (nextg == NULL) {
+      return NULL;
+    }
+    // return nextg;
+    if (nextg->when < now) {
+      return nextg;
+    }
+    usleep(200);
+    runqput(getP(), nextg);
+  }
+}
+
 void sched(void *arg) {
   printf("main_main\n");
 
   while (1) {
-    g *nextg = runqget(getP());
+    g *nextg = findRunnable();
     if (nextg == NULL) {
       sleep(1);
       printf("no co to run\n");
@@ -185,11 +205,14 @@ void sched(void *arg) {
   exit(0);
 }
 
-void gsleep(int64 sec) {
+void timeSleep(int64 ns) {
+  if (ns <= 0) {
+    return;
+  }
   g *gp = getg();
-  gp->when = nanotime() + sec * 1000000000;
+  gp->when = nanotime() + ns;
   casgstatus(gp, gp->atomicstatus, _Gwaiting);
-  yield();
+  Gosched();
 }
 
 void mstart1() { GetContext(&g0->ctx); }
@@ -219,6 +242,7 @@ int rt0_go() {
   newproc(main, NULL);
 
   mstart();
+  abort();
   return 0;
 }
 
