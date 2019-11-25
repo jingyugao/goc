@@ -3,20 +3,20 @@
 
 #include "type.h"
 #include <time.h>
+
+#define Nanosecond 1
+#define Microsecond (1000 * Nanosecond)
+#define Millisecond (1000 * Microsecond)
+#define Second (1000 * Millisecond)
+#define Minute (60 * Second)
+#define Hour (60 * Minute)
+
 // int64 cputicks() {
 //     int64 val;
 //     __asm__ __volatile__("rdtsc" : "=A" (val));
 //     return val;
 // }
 
-int64 nanotime() {
-  struct timespec ts;
-  int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
-  if (ret == 0) {
-    return ts.tv_sec * 1000000000 + ts.tv_nsec;
-  }
-  *(int64 *)(NULL);
-  return 0;
-}
+int64 nanotime();
 
 #endif
