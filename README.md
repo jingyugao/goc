@@ -5,3 +5,6 @@ Goroutine implement of c.
 
 ## start 
 runtime.rt0_go->runtime.main->main_main(user main).
+
+## exit
+retq->goexit->goexit1->goexit0.
