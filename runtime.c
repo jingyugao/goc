@@ -55,7 +55,10 @@ g *malg() {
 
   c->stack.lo = stackTop;
   // align
-  stackBase = ALIGN(stackBase, 16) - 8;
+  stackBase = ALIGN(stackBase, 16);
+  stackBase = stackBase - 8;
+  *(long *)stackBase = goexit;
+
   c->stack.hi = stackBase;
   c->ctx.reg.rsp = stackBase;
 
@@ -152,20 +155,11 @@ g *newproc1(Func fn) {
   return newg;
 }
 
-// todo:use asm
-void wrap_f(Func *fn) {
-  fn->f(fn->arg);
-  goexit();
-}
-
 void newproc(void (*f)(void *), void *arg) {
   g *gp = getg();
   Func fn;
-  fn.f = wrap_f;
-  Func *f2 = malloc(sizeof(Func));
-  f2->arg = arg;
-  f2->f = f;
-  fn.arg = f2;
+  fn.f = f;
+  fn.arg = arg;
   newproc1(fn);
   return;
 }
