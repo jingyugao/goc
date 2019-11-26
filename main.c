@@ -29,7 +29,6 @@ int main() {
     newproc(f, NULL);
   }
 
-
-  timeSleep(5*Minute);
+  timeSleep(5 * Second);
   printf("ret :%d\n", num);
 }

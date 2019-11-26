@@ -2,12 +2,30 @@
 #include "runtime.h"
 
 #include "time.h"
+#include <pthread.h>
 
 #define _StackMin (1 << 20)
 #define ALIGN(p, alignbytes)                                                   \
   ((void *)(((unsigned long)(p) + (alignbytes)-1) & ~((alignbytes)-1)))
 
-int main();
+pthread_mutex_t bigmutex = PTHREAD_MUTEX_INITIALIZER;
+
+void lockall() {
+  int ret = pthread_mutex_lock(&bigmutex);
+  if (ret != 0) {
+    printf("pthread_mutex_lock error:%d\n", ret);
+    abort();
+  }
+}
+
+void unlockall() {
+  int ret = pthread_mutex_unlock(&bigmutex);
+  if (ret != 0) {
+    printf("pthread_mutex_unlock error:%d\n", ret);
+    abort();
+  }
+}
+
 g *allgs[1024];
 static g *g0;
 
@@ -17,7 +35,7 @@ p *getP() {
 };
 
 void SwitchTo(g *from, g *to) {
-
+  
   // printf("switch %d to %d\n", from->id, to->id);
   int ret = SaveContext(&from->ctx);
   if (ret == 0) {
@@ -222,6 +240,7 @@ void mstart() {
   exit(0);
 }
 
+int main();
 // really main
 int rt0_go() {
   printf("asm main\n");
