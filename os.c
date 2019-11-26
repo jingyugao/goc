@@ -1,5 +1,5 @@
 #include <pthread.h>
-
+#include<stdlib.h>
 #include "runtime2.h"
 
 void mstart_stub() {
