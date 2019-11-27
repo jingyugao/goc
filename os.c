@@ -2,9 +2,12 @@
 #include <pthread.h>
 #include <stdlib.h>
 
-void mstart_stub() {
-  g *g0 = getg();
-  SaveContext(&g0->ctx);
+void mstart_stub(m *mp) {
+  printf("mstart_stub:%p\n", mp);
+  settls(&mp->tls);
+  printf("settls\n");
+  mp->tls.ptr[0] = mp->g0;
+
   mstart();
 }
 
@@ -14,17 +17,8 @@ void sysmon() {
   }
 }
 
-void newosproc(m *mp);
-
-void newm1(m *mp) { newosproc(mp); }
-
-void newm(void *f, p *_p_) {
-  m *mp = (m *)malloc(sizeof(m));
-
-  newm1(mp);
-}
-
 void newosproc(m *mp) {
+  printf("newosproc\n");
   pthread_attr_t attr;
   pthread_attr_init(&attr);
   uintptr stacksize;
@@ -32,13 +26,15 @@ void newosproc(m *mp) {
     printf("pthread_attr_getstacksize error\n");
     exit(1);
   }
-  mp->g0->stack.hi = stacksize; //???
+  // fp->stack.hi = stacksize; //???
+
   if (pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0) {
     printf("pthread_attr_setdetachstate error\n");
     exit(1);
   }
 
-  if (pthread_create(&mp->thread, &attr, mstart_stub, NULL) != 0) {
+  printf("pthread_create\n");
+  if (pthread_create(&mp->thread, &attr, mstart_stub, mp) != 0) {
     printf("pthread_create error\n");
     exit(1);
   }

@@ -4,6 +4,7 @@
 #include <pthread.h>
 
 #include "context.h"
+#define MAXPORC (4)
 
 typedef struct {
   void (*f)(void *);
@@ -47,5 +48,9 @@ typedef struct m {
   int64 id;
   pthread_t thread;
 } m;
+
+extern m *allm;
+extern p *allp[MAXPORC];
+extern pthread_mutex_t allpLock;
 
 #endif

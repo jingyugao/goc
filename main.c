@@ -31,4 +31,5 @@ int main() {
 
   timeSleep(5 * Second);
   printf("ret :%d\n", num);
+  assert(num==60);
 }

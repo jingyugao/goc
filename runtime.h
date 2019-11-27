@@ -10,7 +10,6 @@
 #include "runtime2.h"
 #include "type.h"
 
-#define MAXPORC (4)
 #define _Gidle     (0）
 #define _Grunnable (1)
 #define _Grunning (2)
@@ -20,6 +19,7 @@
 
 extern g *allgs[1024];
 g *getg();
+g *malg();
 
 void lockall();
 void unlockall();
@@ -27,5 +27,7 @@ void unlockall();
 void timeSleep(int64 ns);
 void newproc(void (*f)(void *), void *arg);
 void goexit();
+void settls(tls *ptr);
+tls *gettls();
 
 #endif

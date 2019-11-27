@@ -44,8 +44,7 @@ void settls(tls *ptr) {
 tls *gettls() { return (tls *)pthread_getspecific(VirFSReg); }
 
 p *getP() {
-  static p p;
-  return &p;
+  return getg()->mp->p;
 };
 
 // ctx must be within g struct
@@ -198,7 +197,16 @@ void newproc(void (*f)(void *), void *arg) {
   return;
 }
 
-void schedinit() { printf("schedinit\n"); }
+void schedinit() {
+  printf("schedinit\n");
+  g *_g_ = getg();
+  for (int i = 0; i < MAXPORC; i++) {
+    allp[i] = (p *)malloc(sizeof(p));
+  }
+
+  _g_->mp->p = allp[0];
+  allp[0]->mp = _g_->mp;
+}
 
 int main_main();
 
@@ -220,7 +228,7 @@ g *findRunnable() {
 
 // must on g0
 void schedule(void *arg) {
-  printf("main_schedmain\n");
+  printf("main_sched\n");
   while (1) {
     g *nextg = findRunnable();
     if (nextg == NULL) {
@@ -244,11 +252,11 @@ void timeSleep(int64 ns) {
   Gosched();
 }
 
-void mstart1() { gogo(&g0->ctx); }
+void mstart1() { schedule(NULL); }
 
 void mstart() {
   mstart1();
-  exit(0);
+  pthread_exit(0);
 }
 
 int main();
@@ -256,8 +264,6 @@ int main();
 int rt0_go() {
   printf("asm main\n");
   memset(allgs, 0, 1024 * sizeof(uintptr));
-  p *p = getP();
-  memset(p, 0, sizeof(p));
   int ret = pthread_key_create(&VirFSReg, NULL);
   if (ret != 0) {
     printf("pthread_key_create error:%d\n", ret);
@@ -280,8 +286,11 @@ int rt0_go() {
 
   schedinit();
   newproc(main, NULL);
-
+  printf("x\n");
+  // wakep();
+  // sleep(1000);
   mstart();
+
   abort();
   return 0;
 }
