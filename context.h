@@ -3,8 +3,7 @@
 #include "type.h"
 #include <assert.h>
 
-typedef struct
-{
+typedef struct {
   uintptr rbx, rsp, rbp, r12, r13, r14, r15, pc_addr, rdi;
 } Register;
 

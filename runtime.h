@@ -7,8 +7,8 @@
 #include <unistd.h>
 
 #include "context.h"
-#include "type.h"
 #include "runtime2.h"
+#include "type.h"
 
 #define MAXPORC (4)
 #define _Gidle     (0）
@@ -17,7 +17,6 @@
 #define _Gsyscall (3)
 #define _Gwaiting (4)
 #define _Gdead (6)
-
 
 extern g *allgs[1024];
 g *getg();

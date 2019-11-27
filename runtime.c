@@ -163,17 +163,18 @@ void Gosched() {
 
 g *getg() { return ((g *)gettls()->ptr[0]); }
 
-// void systemstack(Func fn) {
-//   printf("systemstack\n");
-//   g0->fn = fn;
-//   int ret = SaveContext(&g0->ctx);
-//   printf("ret:%d\n", ret);
-//   if (ret == 0) {
-//     printf("%d\n", g0->fn.f);
-//     g0->fn.f(g0->fn.arg);
-//     GetContext(&g0->ctx);
-//   }
-// }
+void systemstack(Func fn) {
+
+  printf("systemstack\n");
+  g0->fn = fn;
+  int ret = SaveContext(&g0->ctx);
+  printf("ret:%d\n", ret);
+  if (ret == 0) {
+    printf("%d\n", g0->fn.f);
+    g0->fn.f(g0->fn.arg);
+    GetContext(&g0->ctx);
+  }
+}
 
 g *newproc1(Func fn) {
   printf("newproc1\n");

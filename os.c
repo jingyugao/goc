@@ -1,6 +1,6 @@
-#include <pthread.h>
-#include<stdlib.h>
 #include "runtime2.h"
+#include <pthread.h>
+#include <stdlib.h>
 
 void mstart_stub() {
   g *g0 = getg();

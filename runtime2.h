@@ -5,22 +5,19 @@
 
 #include "context.h"
 
-typedef struct
-{
+typedef struct {
   void (*f)(void *);
   void *arg;
 } Func;
 
 struct m;
 
-typedef struct
-{
+typedef struct {
   uintptr lo;
   uintptr hi;
 } Stack;
 
-typedef struct
-{
+typedef struct {
   uint32 atomicstatus;
   int id;
   Context ctx;
@@ -30,8 +27,7 @@ typedef struct
   struct m *mp;
 } g;
 
-typedef struct p
-{
+typedef struct p {
   struct m *mp;
   int runqhead;
   int runqtail;
@@ -39,13 +35,11 @@ typedef struct p
   g *curg;
 } p;
 
-typedef struct
-{
+typedef struct {
   uintptr ptr[6];
 } tls;
 
-typedef struct m
-{
+typedef struct m {
   g *g0;
   tls tls;
   g *curg;
