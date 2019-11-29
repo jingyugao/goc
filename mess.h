@@ -4,13 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define newT(T) (T *)(zalloc(sizeof(T)))
-
 static void *zalloc(size_t size) {
   void *p = malloc(size);
   memset(p, 0, size);
   return p;
 }
+
+#define newT(T) (T *)(zalloc(sizeof(T)))
 
 typedef struct {
   pthread_mutex_t key;

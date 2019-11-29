@@ -1,5 +1,9 @@
 .PONY:force
+
+
+
 force:
+	mkdir -p bin
 
 CC=gcc
 CF=-g -Wall -std=c11
