@@ -21,9 +21,6 @@ extern g *allgs[1024];
 g *getg();
 g *malg();
 
-void lockall();
-void unlockall();
-
 void timeSleep(int64 ns);
 void newproc(void (*f)(void *), void *arg);
 void goexit();

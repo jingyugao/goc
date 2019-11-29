@@ -3,11 +3,8 @@
 #include <stdlib.h>
 
 void mstart_stub(m *mp) {
-  printf("mstart_stub:%p\n", mp);
   settls(&mp->tls);
-  printf("settls\n");
   mp->tls.ptr[0] = mp->g0;
-
   mstart();
 }
 

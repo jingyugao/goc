@@ -4,14 +4,8 @@
 #include <pthread.h>
 
 #include "context.h"
+#include "mess.h"
 #define MAXPORC (4)
-
-typedef struct {
-  pthread_mutex_t key;
-} mutex;
-
-static void lock(mutex *m) { pthread_mutex_lock(&m->key); }
-static void unlock(mutex *m) { pthread_mutex_unlock(&m->key); }
 
 typedef struct {
   void (*f)(void *);
