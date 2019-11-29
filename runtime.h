@@ -29,6 +29,6 @@ void newproc(void (*f)(void *), void *arg);
 void goexit();
 void settls(tls *ptr);
 tls *gettls();
-void newm(void *f, p *_p_) ;
+void newm(void *f, p *_p_);
 
 #endif

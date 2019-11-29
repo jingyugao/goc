@@ -1,7 +1,6 @@
 #include "runtime.h"
 #include "runtime2.h"
 
-
 m *allocm(p *_p_, void *fn);
 void newm1(m *mp);
 void newm(void *f, p *_p_);

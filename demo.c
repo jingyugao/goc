@@ -15,7 +15,7 @@ int f() {
 }
 
 int main() {
-  int *a=newT(int);
+  int *a = newT(int);
   for (int i = 0; i < 100; i++) {
     int64 t = cputicks();
     printf("%lld\n", t);
