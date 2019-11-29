@@ -9,3 +9,10 @@ int64 nanotime() {
   *(int64 *)(NULL);
   return 0;
 }
+
+
+int64 cputicks() {
+    int64 val;
+    __asm__ __volatile__("rdtsc" : "=A" (val));
+    return val;
+}

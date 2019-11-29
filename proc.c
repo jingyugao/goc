@@ -1,6 +1,7 @@
 #include "runtime.h"
 #include "runtime2.h"
 
+
 m *allocm(p *_p_, void *fn);
 void newm1(m *mp);
 void newm(void *f, p *_p_);
@@ -12,7 +13,7 @@ p *pidleget() {
       return allp[i];
     }
   }
-  return (p *)malloc(sizeof(p));
+  return newT(p);
 }
 
 void wakep() { startm(NULL, true); }
@@ -27,16 +28,16 @@ void startm(p *_p_, bool spiinning) {
 }
 
 void newm(void *f, p *_p_) {
-  printf("newm\n");
   m *mp = allocm(_p_, f);
   newm1(mp);
 }
 
 m *allocm(p *_p_, void *fn) {
-  m *mp = (m *)malloc(sizeof(m));
+  m *mp = newT(m);
   mp->g0 = malg();
   mp->g0->mp = mp;
   mp->p = _p_;
+  mp->mstartfn.f = fn;
   return mp;
 }
 

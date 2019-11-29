@@ -12,10 +12,10 @@ void f2(int *arg) {
 
 void f(void *arg) {
   for (int i = 0; i < 10; i++) {
-    usleep(10000);
+    usleep(500*1000);
     num++;
     int gid = getg()->id;
-    printf("g%d is runing %d\n", gid, i);
+    printf("g%d is runing on p%d\n", gid, getg()->mp->p->id);
     Gosched();
     newproc(f2, &i);
   }
@@ -29,7 +29,7 @@ int main() {
     newproc(f, NULL);
   }
 
-  timeSleep(5 * Second);
+  timeSleep( Minute);
   printf("ret :%d\n", num);
-  assert(num==60);
+  assert(num <= 60);
 }

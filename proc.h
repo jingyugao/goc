@@ -2,5 +2,4 @@
 #define PROC_H
 
 void wakep();
-
 #endif

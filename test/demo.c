@@ -1,8 +1,7 @@
 
 #include <stdlib.h>
 
-#include "mess.h"
-#include "time.h"
+#include "../time.h"
 
 int f() {
   int a = 1;
@@ -15,7 +14,6 @@ int f() {
 }
 
 int main() {
-  int *a=newT(int);
   for (int i = 0; i < 100; i++) {
     int64 t = cputicks();
     printf("%lld\n", t);
