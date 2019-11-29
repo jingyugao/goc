@@ -9,14 +9,14 @@ fmt:force
 	clang-format -i *.c *.h
 
 clean:force
-	rm -rf *dSYM *.out
+	rm -rf *dSYM *.out ./bin/*
 
 test_main:force
-	$(CC) $(CF) -o ./bin/$@. ./test/main.c $(runtime)
-	./bin/$@.
+	$(CC) $(CF) -o ./bin/$@ ./test/main.c $(runtime)
+	./bin/$@
 
 test_time:force
-	$(CC) $(CF) -o ./bin/$@. ./test/time.c time.c
-	./bin/$@.
+	$(CC) $(CF) -o ./bin/$@ ./test/time.c time.c
+	./bin/$@
 
 test:test_time test_main 
