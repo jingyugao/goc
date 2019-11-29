@@ -1,0 +1,11 @@
+digraph{
+subgraph g {
+    m->newproc1->schedule;
+    schedule->execute->gogo;
+    gogo->"jmp func";
+     gogo[style=filled,fillcolor=red];
+    }
+
+}
+
+

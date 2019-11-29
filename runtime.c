@@ -1,35 +1,56 @@
+#include <pthread.h>
 
+#include "os.h"
 #include "runtime.h"
-
 #include "time.h"
 
-#define _StackMin (1 << 20)
+#define _StackReserve (1 << 20)
+#define _StackMin (2 << 10)
+
 #define ALIGN(p, alignbytes)                                                   \
   ((void *)(((unsigned long)(p) + (alignbytes)-1) & ~((alignbytes)-1)))
 
-int main();
+m *m0;
+g *g0;
 g *allgs[1024];
-static g *g0;
 
-p *getP() {
-  static p p;
-  return &p;
-};
+static pthread_key_t VirFSReg = 0; // pointer to m.tls
+void settls(tls *ptr) {
+  int ret = pthread_setspecific(VirFSReg, ptr);
+  if (ret != 0) {
+    printf("pthread_setspecific error:%d\n", ret);
+    abort();
+  }
+}
+
+tls *gettls() { return (tls *)pthread_getspecific(VirFSReg); }
+
+p *getP() { return getg()->mp->p; };
+
+// ctx must be within g struct
+void gogo(Context *ctx) {
+  g *gp = (g *)((void *)ctx - (void *)(&((g *)NULL)->ctx));
+  tls *tls = gettls();
+  tls->ptr[0] = gp;
+  GetContext(ctx);
+}
 
 void SwitchTo(g *from, g *to) {
-
+  to->mp = from->mp;
+  to->mp->curg = to;
   // printf("switch %d to %d\n", from->id, to->id);
   int ret = SaveContext(&from->ctx);
   if (ret == 0) {
-    GetContext(&to->ctx);
+    gogo(&to->ctx);
   }
 }
 
 static int gid = 1;
-int AllocGID() {
+int allocGID() {
   gid++;
   return gid;
 }
+
 void allgadd(g *gp) {
   for (int i = 0; i < 1024; i++) {
     if (allgs[i] == NULL) {
@@ -42,7 +63,7 @@ void allgadd(g *gp) {
 }
 
 g *malg() {
-  int stackSize = _StackMin;
+  int stackSize = _StackReserve;
   uintptr stackTop;
 
   int ret = posix_memalign(&stackTop, stackSize, stackSize);
@@ -50,9 +71,7 @@ g *malg() {
     return NULL;
   }
   uintptr stackBase = stackTop + stackSize;
-  g *c = stackTop;
-  memset(&c->ctx, 0, sizeof(Context));
-
+  g *c = newT(g);
   c->stack.lo = stackTop;
   // align
   stackBase = ALIGN(stackBase, 16);
@@ -68,8 +87,9 @@ g *malg() {
 void runqput(p *p, g *g) {
   if (g->id == 0) {
     backtrace();
-    exit(1);
+    abort();
   }
+  lock(&p->mu);
   int h = p->runqhead;
   int t = p->runqtail;
 
@@ -78,17 +98,21 @@ void runqput(p *p, g *g) {
     p->runq[t % (size)] = g;
     p->runqtail = t + 1;
   }
+  unlock(&p->mu);
 
   // put to global runq
 };
 
 g *runqget(p *p) {
+  lock(&p->mu);
   if (p->runqhead == p->runqtail) {
+    unlock(&p->mu);
     return NULL;
   }
   int size = (sizeof(p->runq) / sizeof(p->runq[0]));
   g *c = p->runq[p->runqhead % size];
   p->runqhead++;
+  unlock(&p->mu);
   return c;
 }
 
@@ -96,11 +120,12 @@ void casgstatus(g *gp, uint32 oldval, uint32 newval) {
   gp->atomicstatus = newval;
 }
 
-void mcall(void (*p)(g *)) { p(getg()); }
+void mcall(void (*f)(g *)) { f(getg()); }
 
 void goexit0(g *gp) {
   casgstatus(gp, gp->atomicstatus, _Gdead);
-  GetContext(&g0->ctx);
+  // todo schedule
+  gogo(&gp->mp->g0->ctx);
 }
 
 void goexit1() { mcall(goexit0); }
@@ -115,21 +140,11 @@ void Gosched() {
   p *p = getP();
   runqput(p, curg);
   casgstatus(curg, curg->atomicstatus, _Grunnable);
-  SwitchTo(curg, g0);
+  SwitchTo(curg, curg->mp->g0);
   return;
 };
 
-g *getg() {
-  __asm__("movq $-1<<20,%%rax\n\t"
-          "andq %%rsp, %%rax;\n\t"
-          "popq	%%rbp;\n\t"
-          "retq;\n\t"
-          :
-          :
-          :);
-  *(int *)(NULL) = 1;
-  return NULL;
-}
+g *getg() { return ((g *)gettls()->ptr[0]); }
 
 void systemstack(Func fn) {
   printf("systemstack\n");
@@ -143,13 +158,10 @@ void systemstack(Func fn) {
   }
 }
 
-g *newproc1(Func fn);
-
 g *newproc1(Func fn) {
-  printf("newproc1\n");
   g *newg = malg();
   allgadd(newg);
-  int gid = AllocGID();
+  int gid = allocGID();
   newg->id = gid;
   newg->fn = fn;
   newg->ctx.reg.rdi = newg->fn.arg;
@@ -160,7 +172,6 @@ g *newproc1(Func fn) {
 }
 
 void newproc(void (*f)(void *), void *arg) {
-  g *gp = getg();
   Func fn;
   fn.f = f;
   fn.arg = arg;
@@ -168,14 +179,46 @@ void newproc(void (*f)(void *), void *arg) {
   return;
 }
 
-void schedinit() { printf("schedinit\n"); }
+void schedinit() {
+  printf("schedinit\n");
+  g *_g_ = getg();
+  for (int i = 0; i < MAXPORC; i++) {
+    allp[i] = newT(p);
+    memset(allp[i], 0, sizeof(p));
+    allp[i]->id = i;
+  }
+
+  _g_->mp->p = allp[0];
+  allp[0]->mp = _g_->mp;
+}
 
 int main_main();
 
+g *runqsteal(p *_p_, p *p2, bool stealRunNextG) {
+  if (p2 == NULL || p2 == _p_) {
+    return NULL;
+  }
+  g *nextg = runqget(p2);
+  if (nextg != NULL) {
+    return nextg;
+  }
+  return NULL;
+}
+
 g *findRunnable() {
+  p *_p_ = getg()->mp->p;
   while (1) {
     int64 now = nanotime();
     g *nextg = runqget(getP());
+    if (nextg == NULL) {
+      for (int i = 0; i < MAXPORC; i++) {
+        nextg = runqsteal(_p_, allp[i], true);
+        if (nextg != NULL) {
+          printf("%d steal from %d\n", _p_->id, allp[i]->id);
+          break;
+        }
+      }
+    }
     if (nextg == NULL) {
       return NULL;
     }
@@ -183,25 +226,24 @@ g *findRunnable() {
     if (nextg->when < now) {
       return nextg;
     }
-    usleep(200);
+    usleep(200 * 1000);
     runqput(getP(), nextg);
   }
 }
 
-void sched(void *arg) {
-  printf("main_main\n");
-
+// must on g0
+void schedule(void *arg) {
+  printf("main_sched\n");
   while (1) {
     g *nextg = findRunnable();
     if (nextg == NULL) {
-      sleep(1);
-      printf("no co to run\n");
+      usleep(200 * 1000);
+      printf("p%d no co to run:\n", getg()->mp->id);
       continue;
     }
-    SwitchTo(g0, nextg);
+    SwitchTo(getg(), nextg);
   }
 
-  printf("main return\n");
   exit(0);
 }
 
@@ -215,24 +257,43 @@ void timeSleep(int64 ns) {
   Gosched();
 }
 
-void mstart1() { GetContext(&g0->ctx); }
+void mstart1() {
+  g *_g_ = getg();
+  Func fn = _g_->mp->mstartfn;
+  if (fn.f != NULL) {
+    printf("fn\n");
+    fn.f(fn.arg);
+    printf("fn\n");
+  }
+
+  schedule(NULL);
+}
 
 void mstart() {
   mstart1();
-  exit(0);
+  pthread_exit(0);
 }
 
+int main();
 // really main
 int rt0_go() {
   printf("asm main\n");
   memset(allgs, 0, 1024 * sizeof(uintptr));
-  p *p = getP();
-  memset(p, 0, sizeof(p));
-
+  int ret = pthread_key_create(&VirFSReg, NULL);
+  if (ret != 0) {
+    printf("pthread_key_create error:%d\n", ret);
+    abort();
+  }
   // init g0
   Func fg0;
-  fg0.f = sched;
+  fg0.f = schedule;
   g0 = malg();
+  m *m0 = newT(m);
+  settls(&m0->tls);
+  m0->tls.ptr[0] = g0;
+  g0->mp = m0;
+  m0->g0 = g0;
+  m0->curg = g0;
   allgs[0] = g0;
   g0->id = 0;
   g0->fn = fg0;
@@ -240,8 +301,11 @@ int rt0_go() {
 
   schedinit();
   newproc(main, NULL);
-
+  wakep();
+  newm(sysmon, NULL);
+  // sleep(1000);
   mstart();
+
   abort();
   return 0;
 }
@@ -249,7 +313,7 @@ int rt0_go() {
 int main() {
   if (!g0) {
     printf("main must called after rt0_go\n");
-    exit(1);
+    abort();
   }
   main_main();
 
