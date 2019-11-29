@@ -1,7 +1,7 @@
 
-#include <stdlib.h>
-
 #include "../time.h"
+#include <assert.h>
+#include <stdlib.h>
 
 int f() {
   int a = 1;
@@ -14,10 +14,9 @@ int f() {
 }
 
 int main() {
-  for (int i = 0; i < 100; i++) {
-    int64 t = cputicks();
-    printf("%lld\n", t);
-    sleep(1);
-  }
+  int64 t1 = cputicks();
+  int64 t2 = cputicks();
+  assert(t2 > t1);
+
   return 0;
 }

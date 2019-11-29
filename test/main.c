@@ -1,5 +1,5 @@
-#include "runtime.h"
-#include "time.h"
+#include "../runtime.h"
+#include "../time.h"
 
 int num = 0;
 
@@ -29,7 +29,7 @@ int main() {
     newproc(f, NULL);
   }
 
-  timeSleep(Minute);
+  timeSleep(10*Second);
   printf("ret :%d\n", num);
   assert(num <= 60);
 }

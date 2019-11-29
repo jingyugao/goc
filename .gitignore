@@ -54,6 +54,4 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
-.vscode/
-
-!demo/ctx.S
+/bin/

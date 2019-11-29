@@ -26,6 +26,8 @@
         "stdbool.h": "c",
         "stdlib.h": "c",
         "pthread.h": "c",
-        "mess.h": "c"
+        "mess.h": "c",
+        "assert.h": "c",
+        "time.h": "c"
     }
 }
