@@ -262,7 +262,7 @@ void mstart1() {
   Func fn = _g_->mp->mstartfn;
   if (fn.f != NULL) {
     printf("fn\n");
-    // fn.f(fn.arg);
+    fn.f(fn.arg);
     printf("fn\n");
   }
 
@@ -288,7 +288,7 @@ int rt0_go() {
   Func fg0;
   fg0.f = schedule;
   g0 = malg();
-  m *m0 = (m *)malloc(sizeof(m));
+  m *m0 = newT(m);
   settls(&m0->tls);
   m0->tls.ptr[0] = g0;
   g0->mp = m0;
@@ -302,7 +302,7 @@ int rt0_go() {
   schedinit();
   newproc(main, NULL);
   wakep();
-  // newm(sysmon, NULL);
+  newm(sysmon, NULL);
   // sleep(1000);
   mstart();
 
