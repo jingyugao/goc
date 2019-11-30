@@ -1,5 +1,5 @@
 #include "../runtime.h"
-#include "../time.h"
+#include "../time2.h"
 
 int num = 0;
 
@@ -16,8 +16,7 @@ void f(void *arg) {
     num++;
     int gid = getg()->id;
     printf("g%d is runing on p%d\n", gid, getg()->mp->p->id);
-    Gosched();
-    newproc(f2, &i);
+    go(f2, &i);
   }
 }
 
@@ -26,7 +25,7 @@ int main() __asm__("_main_main");
 // user main go routinue
 int main() {
   for (int i = 0; i < 10; i++) {
-    newproc(f, NULL);
+    go(f, NULL);
   }
 
   timeSleep(10*Second);

@@ -22,10 +22,12 @@ g *getg();
 g *malg();
 
 void timeSleep(int64 ns);
-void newproc(void (*f)(void *), void *arg);
+void newproc(uintptr f, uintptr arg);
 void goexit();
 void settls(tls *ptr);
 tls *gettls();
-void newm(void *f, p *_p_);
+void newm(uintptr f, p *_p_);
+void mstart();
 
+#define go(f, arg) newproc((uintptr)f, (uintptr)arg)
 #endif

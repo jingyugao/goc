@@ -1,5 +1,5 @@
 
-#include "../time.h"
+#include "../time2.h"
 #include <assert.h>
 #include <stdlib.h>
 

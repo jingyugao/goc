@@ -1,9 +1,8 @@
-#include <pthread.h>
-
-#include "os.h"
 #include "runtime.h"
-#include "time.h"
-
+#include "os.h"
+#include "proc.h"
+#include "time2.h"
+#include <pthread.h>
 #define _StackReserve (1 << 20)
 #define _StackMin (2 << 10)
 
@@ -29,9 +28,10 @@ p *getP() { return getg()->mp->p; };
 
 // ctx must be within g struct
 void gogo(Context *ctx) {
-  g *gp = (g *)((void *)ctx - (void *)(&((g *)NULL)->ctx));
+  g *gp = container_of(ctx, g, ctx);
+  // g *gp = (g *)((void *)ctx - (void *)(&((g *)NULL)->ctx));
   tls *tls = gettls();
-  tls->ptr[0] = gp;
+  tls->ptr[0] = (uintptr)gp;
   GetContext(ctx);
 }
 
@@ -66,7 +66,7 @@ g *malg() {
   int stackSize = _StackReserve;
   uintptr stackTop;
 
-  int ret = posix_memalign(&stackTop, stackSize, stackSize);
+  int ret = posix_memalign((void **)&stackTop, stackSize, stackSize);
   if (ret != 0) {
     return NULL;
   }
@@ -74,9 +74,9 @@ g *malg() {
   g *c = newT(g);
   c->stack.lo = stackTop;
   // align
-  stackBase = ALIGN(stackBase, 16);
+  stackBase = (uintptr)ALIGN(stackBase, 16);
   stackBase = stackBase - 8;
-  *(long *)stackBase = goexit;
+  *(uintptr *)stackBase = (uintptr)goexit;
 
   c->stack.hi = stackBase;
   c->ctx.reg.rsp = stackBase;
@@ -86,7 +86,6 @@ g *malg() {
 
 void runqput(p *p, g *g) {
   if (g->id == 0) {
-    backtrace();
     abort();
   }
   lock(&p->mu);
@@ -152,8 +151,7 @@ void systemstack(Func fn) {
   int ret = SaveContext(&g0->ctx);
   printf("ret:%d\n", ret);
   if (ret == 0) {
-    printf("%d\n", g0->fn.f);
-    g0->fn.f(g0->fn.arg);
+    ((void (*)(uintptr))(g0->fn.f))(g0->fn.arg);
     GetContext(&g0->ctx);
   }
 }
@@ -164,14 +162,14 @@ g *newproc1(Func fn) {
   int gid = allocGID();
   newg->id = gid;
   newg->fn = fn;
-  newg->ctx.reg.rdi = newg->fn.arg;
-  newg->ctx.reg.pc_addr = newg->fn.f;
+  newg->ctx.reg.rdi = (uintptr)newg->fn.arg;
+  newg->ctx.reg.pc_addr = (uintptr)newg->fn.f;
   casgstatus(newg, newg->atomicstatus, _Grunnable);
   runqput(getP(), newg);
   return newg;
 }
 
-void newproc(void (*f)(void *), void *arg) {
+void newproc(uintptr f, uintptr arg) {
   Func fn;
   fn.f = f;
   fn.arg = arg;
@@ -214,7 +212,7 @@ g *findRunnable() {
       for (int i = 0; i < MAXPORC; i++) {
         nextg = runqsteal(_p_, allp[i], true);
         if (nextg != NULL) {
-          printf("%d steal from %d\n", _p_->id, allp[i]->id);
+          printf("%d steal %d from %d\n", _p_->id, nextg->id, allp[i]->id);
           break;
         }
       }
@@ -232,13 +230,13 @@ g *findRunnable() {
 }
 
 // must on g0
-void schedule(void *arg) {
+void schedule() {
   printf("main_sched\n");
   while (1) {
     g *nextg = findRunnable();
     if (nextg == NULL) {
       usleep(200 * 1000);
-      printf("p%d no co to run:\n", getg()->mp->id);
+      printf("p%lld no co to run:\n", getg()->mp->id);
       continue;
     }
     SwitchTo(getg(), nextg);
@@ -260,13 +258,13 @@ void timeSleep(int64 ns) {
 void mstart1() {
   g *_g_ = getg();
   Func fn = _g_->mp->mstartfn;
-  if (fn.f != NULL) {
+  if (fn.f != 0) {
     printf("fn\n");
-    fn.f(fn.arg);
+    ((void (*)(uintptr))(fn.f))(fn.arg);
     printf("fn\n");
   }
 
-  schedule(NULL);
+  schedule();
 }
 
 void mstart() {
@@ -286,23 +284,23 @@ int rt0_go() {
   }
   // init g0
   Func fg0;
-  fg0.f = schedule;
+  fg0.f = (uintptr)schedule;
   g0 = malg();
   m *m0 = newT(m);
   settls(&m0->tls);
-  m0->tls.ptr[0] = g0;
+  m0->tls.ptr[0] = (uintptr)g0;
   g0->mp = m0;
   m0->g0 = g0;
   m0->curg = g0;
   allgs[0] = g0;
   g0->id = 0;
   g0->fn = fg0;
-  g0->ctx.reg.pc_addr = g0->fn.f;
+  g0->ctx.reg.pc_addr = (long)g0->fn.f;
 
   schedinit();
-  newproc(main, NULL);
+  newproc((uintptr)main, 0);
   wakep();
-  newm(sysmon, NULL);
+  newm((uintptr)sysmon, 0);
   // sleep(1000);
   mstart();
 
@@ -318,6 +316,5 @@ int main() {
   main_main();
 
   exit(0);
-  *(int *)0;
   return 0;
 }

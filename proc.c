@@ -1,9 +1,8 @@
+#include "os.h"
 #include "runtime.h"
 #include "runtime2.h"
-
-m *allocm(p *_p_, void *fn);
+m *allocm(p *_p_, uintptr f);
 void newm1(m *mp);
-void newm(void *f, p *_p_);
 void startm(p *_p_, bool spiinning);
 
 p *pidleget() {
@@ -22,21 +21,21 @@ void startm(p *_p_, bool spiinning) {
     _p_ = pidleget();
   }
 
-  newm(NULL, _p_);
+  newm(0, _p_);
   return;
 }
 
-void newm(void *f, p *_p_) {
+void newm(uintptr f, p *_p_) {
   m *mp = allocm(_p_, f);
   newm1(mp);
 }
 
-m *allocm(p *_p_, void *fn) {
+m *allocm(p *_p_, uintptr f) {
   m *mp = newT(m);
   mp->g0 = malg();
   mp->g0->mp = mp;
   mp->p = _p_;
-  mp->mstartfn.f = fn;
+  mp->mstartfn.f = f;
   return mp;
 }
 
