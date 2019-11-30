@@ -3,7 +3,7 @@
 
 
 force:
-	mkdir -p ./bin
+	mkdir -p bin
 
 WNO=-Wno-unused-function  -Wno-unused-variable
 CC=gcc
