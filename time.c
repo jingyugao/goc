@@ -7,9 +7,7 @@ int64 nanotime() {
   if (ret == 0) {
     return ts.tv_sec * 1000000000 + ts.tv_nsec;
   }
-  error err;
-  sprintf(err.str, "nanotime err:%d", ret);
-  panic(err);
+  panicf("nanotime err:%d", ret);
   return 0;
 }
 

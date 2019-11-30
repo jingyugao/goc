@@ -34,6 +34,7 @@
         "sstream": "c",
         "typeinfo": "cpp",
         "time2.h": "c",
-        "os.h": "c"
+        "os.h": "c",
+        "select.h": "c"
     }
 }

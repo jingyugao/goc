@@ -2,7 +2,7 @@
 #define LIST_H
 
 #include <stdlib.h>
-
+#include<stdbool.h>
 struct listhead;
 typedef struct listhead
 {
@@ -53,5 +53,8 @@ static inline bool list_empty(const struct listhead *head)
 {
     return head->next == head;
 }
+
+#define list_for_each(pos, head) \
+	for (listhead* pos = (head)->next; pos != (head); pos = pos->next)
 
 #endif
