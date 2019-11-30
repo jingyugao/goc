@@ -5,10 +5,7 @@ int num = 0;
 
 void doSomeThingBusy();
 
-void f2(int *arg) {
-  (*arg)++;
-  int gid = getg()->id;
-};
+
 
 void f(void *arg) {
   for (int i = 0; i < 10; i++) {
@@ -16,7 +13,6 @@ void f(void *arg) {
     num++;
     int gid = getg()->id;
     printf("g%d is runing on p%d\n", gid, getg()->mp->p->id);
-    go(f2, &i);
   }
 }
 
@@ -28,7 +24,7 @@ int main() {
     go(f, NULL);
   }
 
-  timeSleep(10*Second);
+  timeSleep(10 * Second);
   printf("ret :%d\n", num);
-  assert(num <= 60);
+  assert(num <= 100);
 }
