@@ -44,7 +44,7 @@ listhead *netpoll(bool block) {
   while (1) {
     fd_set rset, wset;
     FD_COPY(&pollrset, &rset);
-    FD_COPY(&pollrset, &wset);
+    FD_COPY(&pollwset, &wset);
 
     struct timeval *timeout = NULL;
     struct timeval t;
@@ -54,7 +54,6 @@ listhead *netpoll(bool block) {
       timeout = &t;
     }
     int ret = select(FD_SETSIZE, &rset, &wset, NULL, timeout);
-    printf("ret:%d\n", ret);
     if (ret == -1) {
       if (errno == EAGAIN) {
         continue;
@@ -85,7 +84,6 @@ listhead *netpoll(bool block) {
       }
       if (pd != NULL) {
         pd->fd = i;
-        printf("list_add %d\n", i);
         list_add(&pd->list, list);
       }
     }

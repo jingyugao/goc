@@ -22,8 +22,14 @@ clean:force
 test_main:build_main
 	./bin/$@
 
+
+
+test_netpoll:force
+	$(CC) $(CF) -o ./bin/$@ ./test/netpoll.c netpoll.c
+	./bin/$@
+
 test_time:force
 	$(CC) $(CF) -o ./bin/$@ ./test/time.c time.c
 	./bin/$@
 
-test:test_time test_main 
+test:test_time test_netpoll test_main 
