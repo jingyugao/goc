@@ -30,8 +30,8 @@ static void panic(error err) {
 
   // get void*'s for all entries on the stack
   size = backtrace(array, 10);
-  printf("%s\n",err.str);
-  backtrace_symbols_fd(array+2, size, STDERR_FILENO);
+  printf("%s\n", err.str);
+  backtrace_symbols_fd(array + 2, size, STDERR_FILENO);
   exit(1);
 }
 

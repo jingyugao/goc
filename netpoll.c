@@ -1,6 +1,6 @@
 #include "netpoll.h"
 #include "type.h"
-#include<assert.h>
+#include <assert.h>
 #include <errno.h>
 #include <sys/select.h>
 fd_set pollrset;
@@ -53,9 +53,12 @@ listhead *netpoll(bool block) {
       t.tv_usec = 0;
       timeout = &t;
     }
-    int ret = select(1024, &rset, &wset, NULL, timeout);
+    int ret = select(FD_SETSIZE, &rset, &wset, NULL, timeout);
     printf("ret:%d\n", ret);
     if (ret == -1) {
+      if (errno == EAGAIN) {
+        continue;
+      }
       panicf("poll err:%d, %s", ret, strerror(errno));
     }
     if (ret == 0) {
@@ -64,7 +67,7 @@ listhead *netpoll(bool block) {
       }
       return NULL;
     }
-    for (int i = 0; i < 1024; i++) {
+    for (int i = 0; i < FD_SETSIZE; i++) {
       pollDesc *pd = NULL;
       if (FD_ISSET(i, &rset)) {
         if (pd == NULL) {

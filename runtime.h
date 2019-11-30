@@ -10,7 +10,7 @@
 #include "runtime2.h"
 #include "type.h"
 
-#define _Gidle     (0）
+#define _Gidle (0)
 #define _Grunnable (1)
 #define _Grunning (2)
 #define _Gsyscall (3)
