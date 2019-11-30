@@ -3,7 +3,7 @@
 
 
 force:
-	mkdir -p bin
+	echo "force"
 
 WNO=-Wno-unused-function  -Wno-unused-variable
 CC=gcc
@@ -13,6 +13,7 @@ runtime=-e _rt0_go *.c
 
 fmt:force
 	clang-format -i *.c *.h
+
 build_main:force
 	$(CC) $(CF) -o ./bin/$@ ./test/main.c $(runtime)
 clean:force
