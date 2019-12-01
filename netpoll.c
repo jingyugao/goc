@@ -47,9 +47,7 @@ listhead *netpoll(bool block) {
   listhead *list = newT(listhead);
   init_list_head(list);
   while (1) {
-    fd_set rset, wset;
-    FD_COPY(&pollrset, &rset);
-    FD_COPY(&pollwset, &wset);
+    fd_set rset = pollrset, wset = pollwset;
 
     struct timeval *timeout = NULL;
     struct timeval t;
