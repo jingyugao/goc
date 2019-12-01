@@ -12,7 +12,9 @@ CF=-g -Wall -std=c11 $(WNO)
 runtime=-e _rt0_go *.c
 
 fmt:force
-	clang-format -i *.c *.h
+	clang-format -i *.[hc]
+	clang-format -i ./base/*.[hc]
+	clang-format -i ./test/*.[hc]
 
 
 clean:force
