@@ -16,7 +16,8 @@ fmt:force
 	clang-format -i ./base/*.[hc]
 	clang-format -i ./test/*.[hc]
 
-
+check_fmt:fmt
+	git diff --exit-code
 
 clean:force
 	rm -rf *dSYM *.out ./bin/*
@@ -24,7 +25,6 @@ clean:force
 test_main:force
 	$(CC) $(CF) -o ./bin/$@ ./test/main.c $(runtime)
 	./bin/$@
-
 
 
 test_netpoll:force
@@ -39,4 +39,4 @@ test_time:force
 	$(CC) $(CF) -o ./bin/$@ ./test/time.c time.c
 	./bin/$@
 
-test:clean test_slice test_time test_netpoll test_main 
+test:check_fmt clean test_slice test_time test_netpoll test_main 
