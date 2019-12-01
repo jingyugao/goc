@@ -17,6 +17,7 @@ fmt:force
 	clang-format -i ./test/*.[hc]
 
 
+
 clean:force
 	rm -rf *dSYM *.out ./bin/*
 
