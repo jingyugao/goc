@@ -236,7 +236,7 @@ void schedule() {
     g *nextg = findRunnable();
     if (nextg == NULL) {
       usleep(200 * 1000);
-      printf("p%ld no co to run:\n", getg()->mp->id);
+      printf("p%lld no co to run:\n", getg()->mp->id);
       continue;
     }
     SwitchTo(getg(), nextg);

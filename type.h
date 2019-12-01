@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define int64 int64_t
+#define int64 long long int
 #define int32 int32_t
 #define uintptr uintptr_t
 #define byte unsigned char
