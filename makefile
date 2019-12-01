@@ -7,7 +7,7 @@ force:
 
 WNO=-Wno-unused-function  -Wno-unused-variable
 CC=gcc
-CF=-g -Wall -std=c11 $(WNO)
+CF=-g -Werror -Wall -std=gnu11 $(WNO)
 # runtime=-e _rt0_go runtime.c runtime2.c time.c context.c proc.c os.c
 runtime=-e _rt0_go *.c
 
@@ -20,9 +20,12 @@ clean:force
 
 test_main:force
 	$(CC) $(CF) -o ./bin/$@ ./test/main.c $(runtime)
-	./bin/$@
+	./bin/$@ 1>/dev/null
 
-
+test_mess:force
+	$(CC) $(CF) -o ./bin/$@ ./test/mess.c 
+	./bin/$@  && false || true
+	
 
 test_netpoll:force
 	$(CC) $(CF) -o ./bin/$@ ./test/netpoll.c netpoll.c
@@ -30,6 +33,6 @@ test_netpoll:force
 
 test_time:force
 	$(CC) $(CF) -o ./bin/$@ ./test/time.c time.c
-	./bin/$@
+	./bin/$@  
 
-test:clean test_time test_netpoll test_main 
+test:clean test_mess test_time test_netpoll test_main 

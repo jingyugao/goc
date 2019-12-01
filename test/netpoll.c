@@ -22,7 +22,7 @@ int main() {
         assert(pd->w == false);
         char buf[10];
         read(pd->fd, buf, 1);
-        assert(buf[0] = 'x');
+        assert(buf[0] == 'x');
       }
     }
   }

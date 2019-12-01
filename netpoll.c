@@ -3,6 +3,11 @@
 #include <assert.h>
 #include <errno.h>
 #include <sys/select.h>
+
+#ifndef FD_COPY
+#define FD_COPY(dest, src) memcpy((dest), (src), sizeof *(dest))
+#endif
+
 fd_set pollrset;
 fd_set pollwset;
 

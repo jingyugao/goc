@@ -1,5 +1,4 @@
 #include "mess.h"
-#include "time2.h"
 #include <time.h>
 int64 nanotime() {
   struct timespec ts;
