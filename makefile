@@ -39,4 +39,4 @@ test_time:force
 	$(CC) $(CF) -o ./bin/$@ ./test/time.c time.c
 	./bin/$@
 
-test:check_fmt clean test_slice test_time test_netpoll test_main 
+test:clean test_slice test_time test_netpoll test_main 
