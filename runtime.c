@@ -7,7 +7,7 @@
 #define _StackMin (2 << 10)
 
 #define ALIGN(p, alignbytes)                                                   \
-  ((void *)(((unsigned long)(p) + (alignbytes)-1) & ~((alignbytes)-1)))
+  ((void *)(((unsigned long long)(p) + (alignbytes)-1) & ~((alignbytes)-1)))
 
 m *m0;
 g *g0;
@@ -236,7 +236,7 @@ void schedule() {
     g *nextg = findRunnable();
     if (nextg == NULL) {
       usleep(200 * 1000);
-      printf("p%lld no co to run:\n", getg()->mp->id);
+      printf("p%ld no co to run:\n", getg()->mp->id);
       continue;
     }
     SwitchTo(getg(), nextg);
@@ -295,7 +295,7 @@ int rt0_go() {
   allgs[0] = g0;
   g0->id = 0;
   g0->fn = fg0;
-  g0->ctx.reg.pc_addr = (long)g0->fn.f;
+  g0->ctx.reg.pc_addr = (uintptr)g0->fn.f;
 
   schedinit();
   newproc((uintptr)main, 0);
