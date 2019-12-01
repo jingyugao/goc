@@ -7,7 +7,7 @@ force:
 
 WNO=-Wno-unused-function  -Wno-unused-variable
 CC=gcc
-CF=-g -Werror -Wall -std=gnu11 $(WNO)
+CF=-pthread -g -Werror -Wall -std=gnu11 $(WNO)
 # runtime=-e _rt0_go runtime.c runtime2.c time.c context.c proc.c os.c
 runtime=-e _rt0_go *.c
 
