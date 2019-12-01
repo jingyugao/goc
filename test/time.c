@@ -1,8 +1,6 @@
 
 #include "../time2.h"
-#include <assert.h>
-#include <stdlib.h>
-
+#include"test.h"
 int f() {
   int a = 1;
   int b = 2;
@@ -18,5 +16,5 @@ int main() {
   int64 t2 = cputicks();
   assert(t2 > t1);
 
-  return 0;
+  test_ok;
 }

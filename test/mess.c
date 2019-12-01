@@ -1,5 +1,5 @@
 #include "../mess.h"
-#include <assert.h>
+#include"test.h"
 typedef struct {
   int xx;
 } XX;
@@ -10,5 +10,6 @@ int main() {
   XX *pX = container_of(&x.xx, XX, xx);
   assert(pX = &x);
   xxx();
-  return 0;
+
+test_ok;
 }

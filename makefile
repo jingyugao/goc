@@ -31,6 +31,10 @@ test_netpoll:force
 	$(CC) $(CF) -o ./bin/$@ ./test/netpoll.c netpoll.c
 	./bin/$@
 
+test_heap:force
+	$(CC) $(CF) -o ./bin/$@ ./test/heap.c
+	./bin/$@
+
 test_slice:force
 	$(CC) $(CF) -o ./bin/$@ ./test/slice.c  
 	./bin/$@

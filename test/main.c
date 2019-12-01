@@ -1,7 +1,6 @@
 #include "../runtime.h"
 #include "../time2.h"
-#include <stdatomic.h>
-
+#include"test.h"
 int num = 0;
 _Atomic int atmicnum = 0;
 
@@ -22,6 +21,6 @@ int main() {
   }
 
   timeSleep(5 * Second);
-  printf("ret :%d,%d,\n", num, atmicnum);
   assert(num <= atmicnum);
+  test_ok;
 }
