@@ -13,11 +13,7 @@ typedef struct {
   append_slice(sli, (void *)elemptr, sizeof(*elemptr))
 
 #define slice_len(sli, type) (sli.used / sizeof(type))
-#define slice_get(sli, index, elemptr)                                         \
-  index_slice(sli, index, elemptr, sizeof(*elemptr))
-
-#define slice_set(sli, index, elemptr)                                         \
-  index_slice_set(sli, index, elemptr, sizeof(*elemptr))
+#define slice_get(sli, index, type) (type *)(sli.ptr + index * sizeof(type))
 
 #define slice_new(type, used, cap)                                             \
   make_slice(used * sizeof(type), cap * sizeof(type));
@@ -52,13 +48,6 @@ static void index_slice(slice sli, int index, void *elemptr, size_t elemsize) {
   int offset = index * elemsize;
   assert(offset < sli.used);
   memcpy(elemptr, sli.ptr + offset, elemsize);
-}
-
-static void index_slice_set(slice sli, int index, void *elemptr,
-                            size_t elemsize) {
-  int offset = index * elemsize;
-  assert(offset < sli.used);
-  memcpy(sli.ptr + offset, elemptr, elemsize);
 }
 
 #endif
