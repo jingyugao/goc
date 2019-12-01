@@ -1,6 +1,5 @@
 #ifndef TYPE_H
 #define TYPE_H
-#include "mess.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -9,5 +8,10 @@
 #define uintptr uintptr_t
 #define byte unsigned char
 #define uint32 uint32_t
+
+typedef struct {
+  int code;
+  char str[1024];
+} error;
 
 #endif

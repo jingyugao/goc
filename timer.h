@@ -1,7 +1,7 @@
 #ifndef TIMER_H
 #define TIMER_H
 #include "runtime.h"
-#include "time.h"
+#include "time2.h"
 
 typedef struct {
   Func fn;

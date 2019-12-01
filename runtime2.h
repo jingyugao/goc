@@ -8,8 +8,8 @@
 #define MAXPORC (4)
 
 typedef struct {
-  void (*f)(void *);
-  void *arg;
+  uintptr f;
+  uintptr arg;
 } Func;
 
 struct m;

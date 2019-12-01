@@ -1,10 +1,10 @@
-#include "runtime2.h"
+#include "runtime.h"
 #include <pthread.h>
 #include <stdlib.h>
 
 void mstart_stub(m *mp) {
   settls(&mp->tls);
-  mp->tls.ptr[0] = mp->g0;
+  mp->tls.ptr[0] = (uintptr)mp->g0;
   mstart();
 }
 
@@ -32,7 +32,7 @@ void newosproc(m *mp) {
   }
 
   printf("pthread_create\n");
-  if (pthread_create(&mp->thread, &attr, mstart_stub, mp) != 0) {
+  if (pthread_create(&mp->thread, &attr, (void *)mstart_stub, mp) != 0) {
     printf("pthread_create error\n");
     exit(1);
   }

@@ -28,6 +28,15 @@
         "pthread.h": "c",
         "mess.h": "c",
         "assert.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "__nullptr": "cpp",
+        "iterator": "cpp",
+        "sstream": "c",
+        "typeinfo": "cpp",
+        "time2.h": "c",
+        "os.h": "c",
+        "select.h": "c",
+        "stdatomic.h": "c",
+        "atomic": "c"
     }
 }
