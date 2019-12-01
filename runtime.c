@@ -190,7 +190,7 @@ void schedinit() {
   allp[0]->mp = _g_->mp;
 }
 
-int main_main();
+int main_main() __asm__("_main_main");
 
 g *runqsteal(p *_p_, p *p2, bool stealRunNextG) {
   if (p2 == NULL || p2 == _p_) {
