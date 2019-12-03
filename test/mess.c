@@ -1,5 +1,5 @@
 #include "../mess.h"
-#include"test.h"
+#include "test.h"
 typedef struct {
   int xx;
 } XX;
@@ -11,5 +11,5 @@ int main() {
   assert(pX = &x);
   xxx();
 
-test_ok;
+  test_ok;
 }

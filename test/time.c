@@ -1,6 +1,6 @@
 
 #include "../time2.h"
-#include"test.h"
+#include "test.h"
 int f() {
   int a = 1;
   int b = 2;

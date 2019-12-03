@@ -40,6 +40,10 @@ typedef struct p {
   g *runq[256];
 
   g *curg;
+
+  vector timers;
+  pthread_mutex_t timerslock;
+
 } p;
 
 typedef struct {

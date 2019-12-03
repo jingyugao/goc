@@ -1,5 +1,5 @@
 #include "../base/heap.h"
-#include"test.h"
+#include "test.h"
 bool cmp(void *x, void *y) { return (*(int *)x) < (*(int *)y); }
 
 int main() {
@@ -19,7 +19,7 @@ int main() {
 
   for (int i = 0; i < 10; i++) {
     int d = *(int *)heap_top(p, elemsize);
-    assert(d==i);
+    assert(d == i);
     heap_pop(p, elemsize);
   }
 

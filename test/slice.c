@@ -1,6 +1,6 @@
 
 #include "../base/slice.h"
-#include"test.h"
+#include "test.h"
 int main() {
   slice sli = slice_new(int, 4, 6);
   for (int i = 0; i < 4; i++) {

@@ -35,6 +35,10 @@ test_heap:force
 	$(CC) $(CF) -o ./bin/$@ ./test/heap.c
 	./bin/$@
 
+test_vector:force
+	$(CC) $(CF) -o ./bin/$@ ./test/vector.c  
+	./bin/$@
+	
 test_slice:force
 	$(CC) $(CF) -o ./bin/$@ ./test/slice.c  
 	./bin/$@
@@ -43,4 +47,4 @@ test_time:force
 	$(CC) $(CF) -o ./bin/$@ ./test/time.c time.c
 	./bin/$@
 
-test:clean test_slice test_time test_netpoll test_main 
+test:clean test_vector test_slice test_time test_netpoll test_main 

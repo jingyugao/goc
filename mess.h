@@ -9,6 +9,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "base/list.h"
+#include "base/vector.h"
+
 static void *zalloc(size_t size) {
   void *p = malloc(size);
   memset(p, 0, size);
