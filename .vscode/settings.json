@@ -37,6 +37,7 @@
         "os.h": "c",
         "select.h": "c",
         "stdatomic.h": "c",
-        "atomic": "c"
+        "atomic": "c",
+        "timer.h": "c"
     }
 }

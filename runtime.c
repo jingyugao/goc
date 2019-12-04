@@ -2,6 +2,7 @@
 #include "os.h"
 #include "proc.h"
 #include "time2.h"
+#include "timer.h"
 #include <pthread.h>
 #define _StackReserve (1 << 20)
 #define _StackMin (2 << 10)
@@ -203,35 +204,48 @@ g *runqsteal(p *_p_, p *p2, bool stealRunNextG) {
   return NULL;
 }
 
+void check_timers(p *pp, int64 ns);
+
 g *findRunnable() {
   p *_p_ = getg()->mp->p;
-  while (1) {
-    int64 now = nanotime();
-    g *nextg = runqget(getP());
-    if (nextg == NULL) {
-      for (int i = 0; i < MAXPORC; i++) {
-        nextg = runqsteal(_p_, allp[i], true);
-        if (nextg != NULL) {
-          printf("%d steal %d from %d\n", _p_->id, nextg->id, allp[i]->id);
-          break;
-        }
+  check_timers(_p_, 0);
+  g *nextg = runqget(_p_);
+  if (nextg == NULL) {
+    for (int i = 0; i < MAXPORC; i++) {
+      nextg = runqsteal(_p_, allp[i], true);
+      if (nextg != NULL) {
+        printf("%d steal %d from %d\n", _p_->id, nextg->id, allp[i]->id);
+        break;
       }
     }
-    if (nextg == NULL) {
-      return NULL;
-    }
-    // return nextg;
-    if (nextg->when < now) {
-      return nextg;
-    }
-    usleep(200 * 1000);
-    runqput(getP(), nextg);
   }
+  if (nextg == NULL) {
+    return NULL;
+  }
+  return nextg;
+}
+void call_fn(Func fn) { ((void (*)(uintptr))(fn.f))(fn.arg); }
+void check_timers(p *pp, int64 ns) {
+  pthread_mutex_lock(&pp->timerslock);
+  ns = nanotime();
+  while (1) {
+    if (vector_count(&pp->timers) == 0) {
+      break;
+    }
+    timer *t0 = vector_get(&pp->timers, 0);
+    if (t0->when > ns) {
+      break;
+    }
+    call_fn(t0->fn);
+    pop_timers(&pp->timers);
+  }
+
+  pthread_mutex_unlock(&pp->timerslock);
 }
 
 // must on g0
 void schedule() {
-  printf("main_sched\n");
+  printf("schedule\n");
   while (1) {
     g *nextg = findRunnable();
     if (nextg == NULL) {
@@ -245,23 +259,33 @@ void schedule() {
   exit(0);
 }
 
+void wakeg(g *gp) {
+  p *_p_ = getg()->mp->p;
+  runqput(_p_, gp);
+}
+
 void timeSleep(int64 ns) {
   if (ns <= 0) {
     return;
   }
+
   g *gp = getg();
   gp->when = nanotime() + ns;
   casgstatus(gp, gp->atomicstatus, _Gwaiting);
-  Gosched();
+  timer *t = newT(timer);
+  t->when = nanotime() + ns;
+  t->fn.arg = (uintptr)gp;
+  t->fn.f = (uintptr)wakeg;
+  p *_p_ = gp->mp->p;
+  push_timers(&_p_->timers, t);
+  SwitchTo(gp, gp->mp->g0);
 }
 
 void mstart1() {
   g *_g_ = getg();
   Func fn = _g_->mp->mstartfn;
   if (fn.f != 0) {
-    printf("fn\n");
     ((void (*)(uintptr))(fn.f))(fn.arg);
-    printf("fn\n");
   }
 
   schedule();

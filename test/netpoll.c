@@ -1,5 +1,5 @@
 #include "../netpoll.h"
-#include <assert.h>
+#include "test.h"
 int main() {
   pollInit();
   int ppfd[2];
@@ -26,5 +26,5 @@ int main() {
       }
     }
   }
-  return 0;
+  test_ok;
 }
