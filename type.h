@@ -10,8 +10,8 @@
 #define uint32 uint32_t
 
 typedef struct {
-  int code;
-  char str[1024];
+	int code;
+	char str[1024];
 } error;
 
 #endif

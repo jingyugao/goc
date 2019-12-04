@@ -8,56 +8,56 @@
 #define MAXPORC (4)
 
 typedef struct {
-  uintptr f;
-  uintptr arg;
+	uintptr f;
+	uintptr arg;
 } Func;
 
 struct m;
 
 typedef struct {
-  uintptr lo;
-  uintptr hi;
+	uintptr lo;
+	uintptr hi;
 } Stack;
 
 typedef struct {
-  uint32 atomicstatus;
-  int id;
-  Context ctx;
-  Func fn;
-  Stack stack;
-  int64 when;
-  struct m *mp;
+	uint32 atomicstatus;
+	int id;
+	Context ctx;
+	Func fn;
+	Stack stack;
+	int64 when;
+	struct m *mp;
 } g;
 
 typedef struct p {
-  int id;
-  struct m *mp;
+	int id;
+	struct m *mp;
 
-  // m protect runq*
-  mutex mu;
-  int runqhead;
-  int runqtail;
-  g *runq[256];
+	// m protect runq*
+	mutex mu;
+	int runqhead;
+	int runqtail;
+	g *runq[256];
 
-  g *curg;
+	g *curg;
 
-  vector timers;
-  pthread_mutex_t timerslock;
+	vector timers;
+	pthread_mutex_t timerslock;
 
 } p;
 
 typedef struct {
-  uintptr ptr[6];
+	uintptr ptr[6];
 } tls;
 
 typedef struct m {
-  Func mstartfn;
-  g *g0;
-  tls tls;
-  g *curg;
-  p *p;
-  int64 id;
-  pthread_t thread;
+	Func mstartfn;
+	g *g0;
+	tls tls;
+	g *curg;
+	p *p;
+	int64 id;
+	pthread_t thread;
 } m;
 
 extern m *allm;
