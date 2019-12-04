@@ -1,6 +1,9 @@
 #ifndef MESS_H
 #define MESS_H
+#include "base/list.h"
+#include "base/vector.h"
 #include "type.h"
+#include <errno.h>
 #include <execinfo.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -8,9 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "base/list.h"
-#include "base/vector.h"
 
 static void *zalloc(size_t size) {
   void *p = malloc(size);

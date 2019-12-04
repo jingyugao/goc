@@ -9,7 +9,7 @@ typedef struct listhead {
   struct listhead *next;
 } listhead;
 
-static inline void init_list_head(listhead *list) {
+static inline void list_head_init(listhead *list) {
   list->next = list;
   list->prev = list;
 }
