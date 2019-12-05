@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <stdatomic.h>
 static void *zalloc(size_t size)
 {
 	void *p = malloc(size);
@@ -20,19 +20,6 @@ static void *zalloc(size_t size)
 }
 
 #define newT(T) (T *)(zalloc(sizeof(T)))
-
-typedef struct {
-	pthread_mutex_t key;
-} mutex;
-
-static void lock(mutex *m)
-{
-	pthread_mutex_lock(&m->key);
-}
-static void unlock(mutex *m)
-{
-	pthread_mutex_unlock(&m->key);
-}
 
 static void panic(error err)
 {

@@ -32,9 +32,9 @@ typedef struct {
 typedef struct p {
 	int id;
 	struct m *mp;
-
+	struct p *link;
 	// m protect runq*
-	mutex mu;
+	pthread_mutex_t mu;
 	int runqhead;
 	int runqtail;
 	g *runq[256];
@@ -56,12 +56,16 @@ typedef struct m {
 	tls tls;
 	g *curg;
 	p *p;
-	int64 id;
 	pthread_t thread;
 } m;
 
+typedef struct {
+	pthread_mutex_t lock;
+	_Atomic int npidle;
+	p *pidle;
+} schedt;
+extern schedt sched;
 extern m *allm;
 extern p *allp[MAXPORC];
-extern pthread_mutex_t allpLock;
 
 #endif

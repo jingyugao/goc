@@ -13,7 +13,7 @@
 m *m0;
 g *g0;
 g *allgs[1024];
-
+_Atomic int main_started;
 static pthread_key_t VirFSReg = 0; // pointer to m.tls
 void settls(tls *ptr)
 {
@@ -102,7 +102,7 @@ void runqput(p *p, g *g)
 	if (g->id == 0) {
 		abort();
 	}
-	lock(&p->mu);
+	pthread_mutex_lock(&p->mu);
 	int h = p->runqhead;
 	int t = p->runqtail;
 
@@ -111,22 +111,22 @@ void runqput(p *p, g *g)
 		p->runq[t % (size)] = g;
 		p->runqtail = t + 1;
 	}
-	unlock(&p->mu);
+	pthread_mutex_unlock(&p->mu);
 
 	// put to global runq
 };
 
 g *runqget(p *p)
 {
-	lock(&p->mu);
+	pthread_mutex_lock(&p->mu);
 	if (p->runqhead == p->runqtail) {
-		unlock(&p->mu);
+		pthread_mutex_unlock(&p->mu);
 		return NULL;
 	}
 	int size = (sizeof(p->runq) / sizeof(p->runq[0]));
 	g *c = p->runq[p->runqhead % size];
 	p->runqhead++;
-	unlock(&p->mu);
+	pthread_mutex_unlock(&p->mu);
 	return c;
 }
 
@@ -196,6 +196,11 @@ g *newproc1(Func fn)
 	newg->ctx.reg.pc_addr = (uintptr)newg->fn.f;
 	casgstatus(newg, newg->atomicstatus, _Grunnable);
 	runqput(getP(), newg);
+
+	if (atomic_load(&sched.npidle) != 0 &&
+	    atomic_load(&main_started) == 1) {
+		wakep();
+	}
 	return newg;
 }
 
@@ -212,10 +217,17 @@ void schedinit()
 {
 	printf("schedinit\n");
 	g *_g_ = getg();
+	void *xx;
 	for (int i = 0; i < MAXPORC; i++) {
-		allp[i] = newT(p);
-		memset(allp[i], 0, sizeof(p));
-		allp[i]->id = i;
+		p *_p_ = newT(p);
+		// memset(allp[i], 0, sizeof(p));
+		_p_->id = i;
+		_p_->link = sched.pidle;
+		if (i != 0) {
+			atomic_fetch_add(&sched.npidle, 1);
+			sched.pidle = _p_;
+		}
+		allp[i] = _p_;
 	}
 
 	_g_->mp->p = allp[0];
@@ -243,18 +255,16 @@ g *findRunnable()
 	p *_p_ = getg()->mp->p;
 	check_timers(_p_, 0);
 	g *nextg = runqget(_p_);
-	if (nextg == NULL) {
-		for (int i = 0; i < MAXPORC; i++) {
-			nextg = runqsteal(_p_, allp[i], true);
-			if (nextg != NULL) {
-				printf("%d steal %d from %d\n", _p_->id,
-				       nextg->id, allp[i]->id);
-				break;
-			}
-		}
+	if (nextg != NULL) {
+		return nextg;
 	}
-	if (nextg == NULL) {
-		return NULL;
+	for (int i = 0; i < MAXPORC; i++) {
+		nextg = runqsteal(_p_, allp[i], true);
+		if (nextg != NULL) {
+			printf("%d steal %d from %d\n", _p_->id, nextg->id,
+			       allp[i]->id);
+			break;
+		}
 	}
 	return nextg;
 }
@@ -284,18 +294,16 @@ void check_timers(p *pp, int64 ns)
 // must on g0
 void schedule()
 {
-	printf("schedule\n");
+	printf("schedule %d\n",getg()->mp->p->id);
 	while (1) {
 		g *nextg = findRunnable();
 		if (nextg == NULL) {
 			usleep(200 * 1000);
-			printf("p%lld no co to run:\n", getg()->mp->id);
+			printf("p%d no co to run:\n", getg()->mp->p->id);
 			continue;
 		}
 		SwitchTo(getg(), nextg);
 	}
-
-	exit(0);
 }
 
 void wakeg(g *gp)
@@ -336,6 +344,7 @@ void mstart1()
 void mstart()
 {
 	mstart1();
+	printf("exit%p\n",getg()->mp->p->id);
 	pthread_exit(0);
 }
 
@@ -367,7 +376,6 @@ int rt0_go()
 
 	schedinit();
 	newproc((uintptr)main, 0);
-	wakep();
 	newm((uintptr)sysmon, 0);
 	// sleep(1000);
 	mstart();
@@ -382,8 +390,12 @@ int main()
 		printf("main must called after rt0_go\n");
 		abort();
 	}
+	atomic_store(&main_started, 1);
 	main_main();
-
 	exit(0);
 	return 0;
+}
+
+void gopark(bool (*f)(g *, void *), void *lock, int reason)
+{
 }

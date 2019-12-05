@@ -1,18 +1,19 @@
 #include "os.h"
 #include "runtime.h"
 #include "runtime2.h"
+#include <pthread.h>
 m *allocm(p *_p_, uintptr f);
 void newm1(m *mp);
 void startm(p *_p_, bool spiinning);
 
 p *pidleget()
 {
-	for (int i = 0; i < MAXPORC; i++) {
-		if (allp[i]->mp == NULL) {
-			return allp[i];
-		}
+	p *_p_ = sched.pidle;
+	if (_p_ != NULL) {
+		sched.pidle = _p_->link;
+		return _p_;
 	}
-	return newT(p);
+	return NULL;
 }
 
 void wakep()
@@ -22,10 +23,15 @@ void wakep()
 
 void startm(p *_p_, bool spiinning)
 {
+	pthread_mutex_lock(&sched.lock);
 	if (_p_ == NULL) {
 		_p_ = pidleget();
 	}
-
+	pthread_mutex_unlock(&sched.lock);
+	if (_p_ == NULL) {
+		return;
+	}
+	printf("newm on p%d\n", _p_->id);
 	newm(0, _p_);
 	return;
 }

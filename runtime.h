@@ -28,6 +28,6 @@ void settls(tls *ptr);
 tls *gettls();
 void newm(uintptr f, p *_p_);
 void mstart();
-
+void gopark(bool (*f)(g *, void *), void *lock, int reason);
 #define go(f, arg) newproc((uintptr)f, (uintptr)arg)
 #endif

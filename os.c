@@ -19,7 +19,6 @@ void sysmon()
 
 void newosproc(m *mp)
 {
-	printf("newosproc\n");
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	uintptr stacksize;
