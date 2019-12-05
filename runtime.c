@@ -344,8 +344,9 @@ void mstart1()
 void mstart()
 {
 	mstart1();
-	printf("exit%p\n",getg()->mp->p->id);
-	pthread_exit(0);
+	// never return
+	abort();
+	// pthread_exit(0);
 }
 
 int main();
