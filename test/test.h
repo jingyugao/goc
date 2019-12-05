@@ -8,7 +8,7 @@
 #include <string.h>
 
 #define test_ok                                                                \
-  printf("test ok:%s\n", __FILE__);                                            \
-  return 0
+	printf("test ok:%s\n", __FILE__);                                      \
+	return 0
 
 #endif

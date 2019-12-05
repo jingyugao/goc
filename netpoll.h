@@ -6,10 +6,10 @@
 #include "type.h"
 
 typedef struct {
-  listhead list;
-  int fd;
-  bool r;
-  bool w;
+	listhead list;
+	int fd;
+	bool r;
+	bool w;
 } pollDesc;
 
 void pollInit();
