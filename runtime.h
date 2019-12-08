@@ -34,5 +34,8 @@ void gogo(Context *ctx);
 void schedule();
 int allocGID();
 void allgadd(g *gp);
+void mcall(void (*f)(g *));
+void systemstack(Func fn);
+void runqput(p *p, g *g);
 #define go(f, arg) newproc((uintptr)f, (uintptr)arg)
 #endif

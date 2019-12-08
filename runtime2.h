@@ -60,7 +60,7 @@ typedef struct m {
 	pthread_t thread;
 
 	void *waitlock;
-	bool (*waitunlockf)(g*,void *);
+	bool (*waitunlockf)(g *, void *);
 } m;
 
 typedef struct {

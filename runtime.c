@@ -10,6 +10,11 @@
 #define ALIGN(p, alignbytes)                                                   \
 	((void *)(((unsigned long)(p) + (alignbytes)-1) & ~((alignbytes)-1)))
 
+void call_fn(Func fn)
+{
+	((void (*)(uintptr))(fn.f))(fn.arg);
+}
+
 m *m0;
 g *g0;
 g *allgs[1024];
@@ -49,6 +54,7 @@ void SwitchTo(g *from, g *to)
 	to->m = from->m;
 	printf("switch %d to %d\n", from->id, to->id);
 	int ret = SaveContext(&from->ctx);
+	printf("ret,%d\n", ret);
 	if (ret == 0) {
 		gogo(&to->ctx);
 	}
@@ -134,30 +140,26 @@ void casgstatus(g *gp, uint32 oldval, uint32 newval)
 	gp->atomicstatus = newval;
 }
 
-void aligncall(Func fn){
-	
+void aligncall(Func fn)
+{
 }
 
 void mcall(void (*f)(g *))
 {
-	printf("mcall\n");
-		Context ctx2;
-	g*gp=getg();
-	g*g0=gp->m->g0;
-	printf("save ctx %p\n",gp->ctx);
+	Context ctx2;
+	g *gp = getg();
+	g *g0 = gp->m->g0;
 	int ret = SaveContext(&gp->ctx);
-	printf("g0ctx %p\n",g0->ctx);
-	for(int i=0;i<9;i++){
-		ctx2.buffer[i]=g0->ctx.buffer[i];
+	for (int i = 0; i < 9; i++) {
+		ctx2.buffer[i] = g0->ctx.buffer[i];
 	}
 	// memcpy(&ctx2.reg,&g0->ctx.reg, sizeof(ctx2.reg));
-	printf("xret:%d\n",ret);
-	ctx2.reg.pc=f;
-	ctx2.reg.rdi=gp;
+	ctx2.reg.pc = (uintptr)f;
+	ctx2.reg.rdi = (uintptr)gp;
 	if (ret == 0) {
-		printf("get ctx\n");
+		tls *tls = gettls();
+		tls->ptr[0] = (uintptr)g0;
 		GetContext(&ctx2);
-	}else{
 		panicf("bad mcall\n");
 	}
 }
@@ -187,6 +189,7 @@ void Gosched()
 	runqput(p, curg);
 	casgstatus(curg, curg->atomicstatus, _Grunnable);
 	SwitchTo(curg, curg->m->g0);
+	printf("gosched\n");
 	return;
 };
 
@@ -197,14 +200,9 @@ g *getg()
 
 void systemstack(Func fn)
 {
-	printf("systemstack\n");
-	g0->fn = fn;
-	int ret = SaveContext(&g0->ctx);
-	printf("ret:%d\n", ret);
-	if (ret == 0) {
-		((void (*)(uintptr))(g0->fn.f))(g0->fn.arg);
-		GetContext(&g0->ctx);
-	}
+	printf("systemstack call\n");
+	// todo
+	call_fn(fn);
 }
 
 g *newproc1(Func fn)
@@ -291,10 +289,7 @@ g *findRunnable()
 	}
 	return nextg;
 }
-void call_fn(Func fn)
-{
-	((void (*)(uintptr))(fn.f))(fn.arg);
-}
+
 void check_timers(p *pp, int64 ns)
 {
 	pthread_mutex_lock(&pp->timerslock);
@@ -326,6 +321,7 @@ void schedule()
 			continue;
 		}
 		SwitchTo(getg(), nextg);
+		printf("switch end\n");
 	}
 }
 
@@ -351,6 +347,7 @@ void timeSleep(int64 ns)
 	p *_p_ = gp->m->p;
 	push_timers(&_p_->timers, t);
 	SwitchTo(gp, gp->m->g0);
+	printf("switch end\n");
 }
 
 void mstart1()
@@ -419,8 +416,4 @@ int main()
 	main_main();
 	exit(0);
 	return 0;
-}
-
-void gopark(bool (*f)(g *, void *), void *lock, int reason)
-{
 }
