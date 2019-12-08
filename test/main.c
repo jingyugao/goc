@@ -3,43 +3,50 @@
 #include "test.h"
 #include "../sync.h"
 
-semaphore sema;
-int semaval;
 
+semaphore sema;
+int semaval=0;
+
+
+semaphore waitgroup;
 int num = 0;
 _Atomic int atmicnum = 0;
 
 void f()
 {
-	printf("f on g%d\n", getg()->id);
-	for (int i = 0; i < 1000; i++) {
+	for (int i = 0; i < 500; i++) {
 		// usleep(500 * 1000);
+		printf("runing\n");
 		num++;
 		atomic_fetch_add(&atmicnum, 1);
-		printf("down\n");
 		semaphore_down(&sema);
-		printf("timeSleep\n");
 		timeSleep(1);
 		semaval++;
-		printf("up\n");
 		semaphore_up(&sema);
-		printf("up end");
 	}
+	semaphore_up(&waitgroup);
 }
 
 int main() __asm__("_main_main");
-
 // user main go routinue
 int main()
 {
 	semaphore_init(&sema, 1);
-	for (int i = 0; i < 1000; i++) {
+	semaphore_init(&waitgroup, 0);
+	int n=10;
+	for (int i = 0; i < n; i++) {
 		go(f, NULL);
 	}
-	// f();
-	timeSleep(10 * Second);
+
+	for(int i=0;i<n;i++){
+		semaphore_down(&waitgroup);
+	}	
+
+	// timeSleep(10 * Second);
 	printf("%d,%d,%D\n", num, atmicnum, semaval);
 	assert(num <= atmicnum);
 
 	test_ok;
 }
+
+

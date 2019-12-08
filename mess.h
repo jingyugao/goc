@@ -35,6 +35,10 @@ static void panic(error err)
 
 #define panicf(format, arg...) __panicf(__FILE__, __LINE__, format, ##arg)
 
+#define debugf(format, arg...)   printf("%s %d"format, __FILE__, __LINE__ , ##arg)
+
+
+
 static void __panicf(const char *fileName, int line, const char *format, ...)
 {
 	error err;

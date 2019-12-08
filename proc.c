@@ -32,14 +32,14 @@ void startm(p *_p_, bool spiinning)
 	if (_p_ == NULL) {
 		return;
 	}
-	printf("newm on p%d\n", _p_->id);
+	debugf("newm on p%d\n", _p_->id);
 	newm(0, _p_);
 	return;
 }
 
 void newm(uintptr f, p *_p_)
 {
-	printf("newm\n");
+	debugf("newm\n");
 	m *mp = allocm(_p_, f);
 	newm1(mp);
 }
@@ -81,7 +81,7 @@ void execute(g *gp)
 
 void park_m(g *gp)
 {
-	printf("park_m on g0\n");
+	debugf("park_m on g0\n");
 	g *_g_ = getg();
 	casgstatus(gp, _Grunning, _Gwaiting);
 	dropg();
@@ -119,19 +119,19 @@ void goparkunlock(pthread_mutex_t *lock, int reason)
 
 void ready(g *gp)
 {
-	printf("ready,%p\n", gp);
+	debugf("ready,%p\n", gp);
 	casgstatus(gp, _Gwaiting, _Grunnable);
 	g *_g_ = getg();
 	runqput(_g_->m->p, gp);
 	if (atomic_load(&sched.npidle) != 0) {
 		// wakep();
 	}
-	printf("ready end\n");
+	debugf("ready end\n");
 }
 
 void goready(g *gp)
 {
-	printf("goready %p\n", gp);
+	debugf("goready %p\n", gp);
 	Func fn;
 	fn.f = (uintptr)ready;
 	fn.arg = (uintptr)gp;

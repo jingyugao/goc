@@ -24,7 +24,7 @@ void settls(tls *ptr)
 {
 	int ret = pthread_setspecific(VirFSReg, ptr);
 	if (ret != 0) {
-		printf("pthread_setspecific error:%d\n", ret);
+		debugf("pthread_setspecific error:%d\n", ret);
 		abort();
 	}
 }
@@ -52,9 +52,9 @@ void gogo(Context *ctx)
 void SwitchTo(g *from, g *to)
 {
 	to->m = from->m;
-	printf("switch %d to %d\n", from->id, to->id);
+	debugf("switch %d to %d\n", from->id, to->id);
 	int ret = SaveContext(&from->ctx);
-	printf("ret,%d\n", ret);
+	debugf("ret,%d\n", ret);
 	if (ret == 0) {
 		gogo(&to->ctx);
 	}
@@ -166,7 +166,7 @@ void mcall(void (*f)(g *))
 
 void goexit0(g *gp)
 {
-	printf("goexit0\n");
+	debugf("goexit0\n");
 	casgstatus(gp, gp->atomicstatus, _Gdead);
 	schedule();
 }
@@ -178,7 +178,7 @@ void goexit1()
 
 void goexit()
 {
-	printf("g %d exit\n", getg()->id);
+	debugf("g %d exit\n", getg()->id);
 	goexit1();
 }
 
@@ -189,7 +189,7 @@ void Gosched()
 	runqput(p, curg);
 	casgstatus(curg, curg->atomicstatus, _Grunnable);
 	SwitchTo(curg, curg->m->g0);
-	printf("gosched\n");
+	debugf("gosched\n");
 	return;
 };
 
@@ -200,7 +200,7 @@ g *getg()
 
 void systemstack(Func fn)
 {
-	printf("systemstack call\n");
+	debugf("systemstack call\n");
 	// todo
 	call_fn(fn);
 }
@@ -235,7 +235,7 @@ void newproc(uintptr f, uintptr arg)
 
 void schedinit()
 {
-	printf("schedinit\n");
+	debugf("schedinit\n");
 	g *_g_ = getg();
 	void *xx;
 	for (int i = 0; i < MAXPROC; i++) {
@@ -272,7 +272,7 @@ void check_timers(p *pp, int64 ns);
 
 g *findRunnable()
 {
-	printf("findrunnable\n");
+	debugf("findrunnable\n");
 	p *_p_ = getg()->m->p;
 	check_timers(_p_, 0);
 	g *nextg = runqget(_p_);
@@ -282,7 +282,7 @@ g *findRunnable()
 	for (int i = 0; i < MAXPROC; i++) {
 		nextg = runqsteal(_p_, allp[i], true);
 		if (nextg != NULL) {
-			printf("%d steal %d from %d\n", _p_->id, nextg->id,
+			debugf("%d steal %d from %d\n", _p_->id, nextg->id,
 			       allp[i]->id);
 			break;
 		}
@@ -312,16 +312,16 @@ void check_timers(p *pp, int64 ns)
 // must on g0
 void schedule()
 {
-	printf("schedule %d\n", getg()->m->p->id);
+	debugf("schedule %d\n", getg()->m->p->id);
 	while (1) {
 		g *nextg = findRunnable();
 		if (nextg == NULL) {
 			usleep(200 * 1000);
-			printf("p%d no co to run:\n", getg()->m->p->id);
+			debugf("p%d no co to run:\n", getg()->m->p->id);
 			continue;
 		}
 		SwitchTo(getg(), nextg);
-		printf("switch end\n");
+		debugf("switch end\n");
 	}
 }
 
@@ -347,7 +347,7 @@ void timeSleep(int64 ns)
 	p *_p_ = gp->m->p;
 	push_timers(&_p_->timers, t);
 	SwitchTo(gp, gp->m->g0);
-	printf("switch end\n");
+	debugf("switch end\n");
 }
 
 void mstart1()
@@ -374,11 +374,11 @@ int main();
 int rt0_go()
 {
 	usleep(1);
-	printf("asm main\n");
+	debugf("asm main\n");
 	memset(allgs, 0, 1024 * sizeof(uintptr));
 	int ret = pthread_key_create(&VirFSReg, NULL);
 	if (ret != 0) {
-		printf("pthread_key_create error:%d\n", ret);
+		debugf("pthread_key_create error:%d\n", ret);
 		abort();
 	}
 	// init g0
@@ -409,7 +409,7 @@ int rt0_go()
 int main()
 {
 	if (!g0) {
-		printf("main must called after rt0_go\n");
+		debugf("main must called after rt0_go\n");
 		abort();
 	}
 	atomic_store(&main_started, 1);

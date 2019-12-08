@@ -24,8 +24,8 @@ typedef struct {
 static void semaphore_down(semaphore *sem)
 {
 	pthread_mutex_lock(&sem->lock);
-	if (sem->count >= 1) {
-		sem->count--;
+	sem->count--;
+	if (sem->count >= 0) {
 		pthread_mutex_unlock(&sem->lock);
 		return;
 	}
@@ -39,7 +39,6 @@ static void semaphore_down(semaphore *sem)
 
 static void semaphore_up(semaphore *sem)
 {
-	printf("sema_up\n");
 	pthread_mutex_lock(&sem->lock);
 	sem->count++;
 	sudog *sg = sem->wait;
