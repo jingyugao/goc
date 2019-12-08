@@ -5,7 +5,7 @@
 
 #include "context.h"
 #include "mess.h"
-#define MAXPORC (2)
+#define MAXPROC (4)
 
 typedef struct {
 	uintptr f;
@@ -70,6 +70,6 @@ typedef struct {
 } schedt;
 extern schedt sched;
 extern m *allm;
-extern p *allp[MAXPORC];
+extern p *allp[MAXPROC];
 
 #endif

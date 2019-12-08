@@ -141,13 +141,25 @@ void aligncall(Func fn){
 void mcall(void (*f)(g *))
 {
 	printf("mcall\n");
+		Context ctx2;
 	g*gp=getg();
 	g*g0=gp->m->g0;
-	printf("getg%d\n",gp->id);
-	g0->ctx.reg.rdi = (uintptr)gp;
-	g0->ctx.reg.pc_addr = (uintptr)f;
-	g0->m->tls.ptr[0] = (uintptr)g0;
-	SwitchTo(gp,g0);
+	printf("save ctx %p\n",gp->ctx);
+	int ret = SaveContext(&gp->ctx);
+	printf("g0ctx %p\n",g0->ctx);
+	for(int i=0;i<9;i++){
+		ctx2.buffer[i]=g0->ctx.buffer[i];
+	}
+	// memcpy(&ctx2.reg,&g0->ctx.reg, sizeof(ctx2.reg));
+	printf("xret:%d\n",ret);
+	ctx2.reg.pc=f;
+	ctx2.reg.rdi=gp;
+	if (ret == 0) {
+		printf("get ctx\n");
+		GetContext(&ctx2);
+	}else{
+		panicf("bad mcall\n");
+	}
 }
 
 void goexit0(g *gp)
@@ -203,7 +215,7 @@ g *newproc1(Func fn)
 	newg->id = gid;
 	newg->fn = fn;
 	newg->ctx.reg.rdi = (uintptr)newg->fn.arg;
-	newg->ctx.reg.pc_addr = (uintptr)newg->fn.f;
+	newg->ctx.reg.pc = (uintptr)newg->fn.f;
 	casgstatus(newg, newg->atomicstatus, _Grunnable);
 	runqput(getg()->m->p, newg);
 
@@ -228,7 +240,7 @@ void schedinit()
 	printf("schedinit\n");
 	g *_g_ = getg();
 	void *xx;
-	for (int i = 0; i < MAXPORC; i++) {
+	for (int i = 0; i < MAXPROC; i++) {
 		p *_p_ = newT(p);
 		// memset(allp[i], 0, sizeof(p));
 		_p_->id = i;
@@ -269,7 +281,7 @@ g *findRunnable()
 	if (nextg != NULL) {
 		return nextg;
 	}
-	for (int i = 0; i < MAXPORC; i++) {
+	for (int i = 0; i < MAXPROC; i++) {
 		nextg = runqsteal(_p_, allp[i], true);
 		if (nextg != NULL) {
 			printf("%d steal %d from %d\n", _p_->id, nextg->id,
@@ -385,7 +397,7 @@ int rt0_go()
 	allgs[0] = g0;
 	g0->id = 0;
 	g0->fn = fg0;
-	g0->ctx.reg.pc_addr = (long)g0->fn.f;
+	g0->ctx.reg.pc = (long)g0->fn.f;
 
 	schedinit();
 	newproc((uintptr)main, 0);

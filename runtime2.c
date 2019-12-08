@@ -2,5 +2,5 @@
 #include <stdlib.h>
 
 m *allm;
-p *allp[MAXPORC];
+p *allp[MAXPROC];
 schedt sched;
