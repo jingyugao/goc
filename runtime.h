@@ -29,5 +29,10 @@ tls *gettls();
 void newm(uintptr f, p *_p_);
 void mstart();
 void gopark(bool (*f)(g *, void *), void *lock, int reason);
+void casgstatus(g *gp, uint32 oldval, uint32 newval);
+void gogo(Context *ctx);
+void schedule();
+int allocGID();
+void allgadd(g *gp);
 #define go(f, arg) newproc((uintptr)f, (uintptr)arg)
 #endif

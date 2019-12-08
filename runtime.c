@@ -31,7 +31,7 @@ tls *gettls()
 
 p *getP()
 {
-	return getg()->mp->p;
+	return getg()->m->p;
 };
 
 // ctx must be within g struct
@@ -46,18 +46,17 @@ void gogo(Context *ctx)
 
 void SwitchTo(g *from, g *to)
 {
-	to->mp = from->mp;
-	to->mp->curg = to;
-	// printf("switch %d to %d\n", from->id, to->id);
+	to->m = from->m;
+	printf("switch %d to %d\n", from->id, to->id);
 	int ret = SaveContext(&from->ctx);
 	if (ret == 0) {
 		gogo(&to->ctx);
 	}
 }
 
-static int gid = 1;
 int allocGID()
 {
+	static int gid = 1;
 	gid++;
 	return gid;
 }
@@ -135,16 +134,27 @@ void casgstatus(g *gp, uint32 oldval, uint32 newval)
 	gp->atomicstatus = newval;
 }
 
+void aligncall(Func fn){
+	
+}
+
 void mcall(void (*f)(g *))
 {
-	f(getg());
+	printf("mcall\n");
+	g*gp=getg();
+	g*g0=gp->m->g0;
+	printf("getg%d\n",gp->id);
+	g0->ctx.reg.rdi = (uintptr)gp;
+	g0->ctx.reg.pc_addr = (uintptr)f;
+	g0->m->tls.ptr[0] = (uintptr)g0;
+	SwitchTo(gp,g0);
 }
 
 void goexit0(g *gp)
 {
+	printf("goexit0\n");
 	casgstatus(gp, gp->atomicstatus, _Gdead);
-	// todo schedule
-	gogo(&gp->mp->g0->ctx);
+	schedule();
 }
 
 void goexit1()
@@ -164,7 +174,7 @@ void Gosched()
 	p *p = getP();
 	runqput(p, curg);
 	casgstatus(curg, curg->atomicstatus, _Grunnable);
-	SwitchTo(curg, curg->mp->g0);
+	SwitchTo(curg, curg->m->g0);
 	return;
 };
 
@@ -195,7 +205,7 @@ g *newproc1(Func fn)
 	newg->ctx.reg.rdi = (uintptr)newg->fn.arg;
 	newg->ctx.reg.pc_addr = (uintptr)newg->fn.f;
 	casgstatus(newg, newg->atomicstatus, _Grunnable);
-	runqput(getP(), newg);
+	runqput(getg()->m->p, newg);
 
 	if (atomic_load(&sched.npidle) != 0 &&
 	    atomic_load(&main_started) == 1) {
@@ -230,8 +240,8 @@ void schedinit()
 		allp[i] = _p_;
 	}
 
-	_g_->mp->p = allp[0];
-	allp[0]->mp = _g_->mp;
+	_g_->m->p = allp[0];
+	allp[0]->m = _g_->m;
 }
 
 int main_main();
@@ -252,7 +262,8 @@ void check_timers(p *pp, int64 ns);
 
 g *findRunnable()
 {
-	p *_p_ = getg()->mp->p;
+	printf("findrunnable\n");
+	p *_p_ = getg()->m->p;
 	check_timers(_p_, 0);
 	g *nextg = runqget(_p_);
 	if (nextg != NULL) {
@@ -294,12 +305,12 @@ void check_timers(p *pp, int64 ns)
 // must on g0
 void schedule()
 {
-	printf("schedule %d\n",getg()->mp->p->id);
+	printf("schedule %d\n", getg()->m->p->id);
 	while (1) {
 		g *nextg = findRunnable();
 		if (nextg == NULL) {
 			usleep(200 * 1000);
-			printf("p%d no co to run:\n", getg()->mp->p->id);
+			printf("p%d no co to run:\n", getg()->m->p->id);
 			continue;
 		}
 		SwitchTo(getg(), nextg);
@@ -308,7 +319,7 @@ void schedule()
 
 void wakeg(g *gp)
 {
-	p *_p_ = getg()->mp->p;
+	p *_p_ = getg()->m->p;
 	runqput(_p_, gp);
 }
 
@@ -325,15 +336,15 @@ void timeSleep(int64 ns)
 	t->when = nanotime() + ns;
 	t->fn.arg = (uintptr)gp;
 	t->fn.f = (uintptr)wakeg;
-	p *_p_ = gp->mp->p;
+	p *_p_ = gp->m->p;
 	push_timers(&_p_->timers, t);
-	SwitchTo(gp, gp->mp->g0);
+	SwitchTo(gp, gp->m->g0);
 }
 
 void mstart1()
 {
 	g *_g_ = getg();
-	Func fn = _g_->mp->mstartfn;
+	Func fn = _g_->m->mstartfn;
 	if (fn.f != 0) {
 		((void (*)(uintptr))(fn.f))(fn.arg);
 	}
@@ -353,6 +364,7 @@ int main();
 // really main
 int rt0_go()
 {
+	usleep(1);
 	printf("asm main\n");
 	memset(allgs, 0, 1024 * sizeof(uintptr));
 	int ret = pthread_key_create(&VirFSReg, NULL);
@@ -367,7 +379,7 @@ int rt0_go()
 	m *m0 = newT(m);
 	settls(&m0->tls);
 	m0->tls.ptr[0] = (uintptr)g0;
-	g0->mp = m0;
+	g0->m = m0;
 	m0->g0 = g0;
 	m0->curg = g0;
 	allgs[0] = g0;
