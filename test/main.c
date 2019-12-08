@@ -3,10 +3,8 @@
 #include "test.h"
 #include "../sync.h"
 
-
 semaphore sema;
-int semaval=0;
-
+int semaval = 0;
 
 semaphore waitgroup;
 int num = 0;
@@ -33,14 +31,14 @@ int main()
 {
 	semaphore_init(&sema, 1);
 	semaphore_init(&waitgroup, 0);
-	int n=10;
+	int n = 10;
 	for (int i = 0; i < n; i++) {
 		go(f, NULL);
 	}
 
-	for(int i=0;i<n;i++){
+	for (int i = 0; i < n; i++) {
 		semaphore_down(&waitgroup);
-	}	
+	}
 
 	// timeSleep(10 * Second);
 	printf("%d,%d,%D\n", num, atmicnum, semaval);
@@ -48,5 +46,3 @@ int main()
 
 	test_ok;
 }
-
-

@@ -5,20 +5,20 @@ typedef struct {
 	// todo: use spinlock
 	pthread_mutex_t lock;
 	int count;
-	void* wait;
+	void *wait;
 } semaphore;
 
 static void semaphore_init(semaphore *sem, int val)
 {
 	pthread_mutex_init(&sem->lock, NULL);
 	sem->count = val;
-	sem->wait=NULL;
+	sem->wait = NULL;
 }
 
 typedef struct {
 	g *gp;
 	// todo use queuq
-	void* next;
+	void *next;
 } sudog;
 
 static void semaphore_down(semaphore *sem)
@@ -32,8 +32,8 @@ static void semaphore_down(semaphore *sem)
 	g *gp = getg();
 	sudog *sg = newT(sudog);
 	sg->gp = gp;
-	sg->next=sem->wait;
-	sem->wait=sg;
+	sg->next = sem->wait;
+	sem->wait = sg;
 	goparkunlock(&sem->lock, 1);
 }
 
@@ -42,8 +42,8 @@ static void semaphore_up(semaphore *sem)
 	pthread_mutex_lock(&sem->lock);
 	sem->count++;
 	sudog *sg = sem->wait;
-	if(sg){
-		sem->wait=sg->next;
+	if (sg) {
+		sem->wait = sg->next;
 	}
 	pthread_mutex_unlock(&sem->lock);
 	if (sg != NULL) {
