@@ -21,6 +21,7 @@ extern g *allgs[1024];
 g *getg();
 g *malg();
 
+void Gosched();
 void timeSleep(int64 ns);
 void newproc(uintptr f, uintptr arg);
 void goexit();

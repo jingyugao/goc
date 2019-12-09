@@ -123,6 +123,7 @@ void runqput(p *p, g *g)
 
 g *runqget(p *p)
 {
+	debugf("runqget:%p\n",p);
 	pthread_mutex_lock(&p->mu);
 	if (p->runqhead == p->runqtail) {
 		pthread_mutex_unlock(&p->mu);
@@ -132,6 +133,7 @@ g *runqget(p *p)
 	g *c = p->runq[p->runqhead % size];
 	p->runqhead++;
 	pthread_mutex_unlock(&p->mu);
+	debugf("runqget end\n");
 	return c;
 }
 
@@ -182,14 +184,14 @@ void goexit()
 	goexit1();
 }
 
+void goschedImpl(g *gp) {
+	runqput(gp->m->p,gp);
+	schedule();
+}
+
 void Gosched()
 {
-	g *curg = getg();
-	p *p = getP();
-	runqput(p, curg);
-	casgstatus(curg, curg->atomicstatus, _Grunnable);
-	SwitchTo(curg, curg->m->g0);
-	debugf("gosched\n");
+	mcall(goschedImpl);
 	return;
 };
 
@@ -258,6 +260,7 @@ int main_main();
 
 g *runqsteal(p *_p_, p *p2, bool stealRunNextG)
 {
+	debugf("runqsteal\n");
 	if (p2 == NULL || p2 == _p_) {
 		return NULL;
 	}
@@ -265,6 +268,7 @@ g *runqsteal(p *_p_, p *p2, bool stealRunNextG)
 	if (nextg != NULL) {
 		return nextg;
 	}
+	debugf("runqsteal end\n");
 	return NULL;
 }
 
@@ -292,6 +296,7 @@ g *findRunnable()
 
 void check_timers(p *pp, int64 ns)
 {
+	debugf("check_timers,%p\n",pp);
 	pthread_mutex_lock(&pp->timerslock);
 	ns = nanotime();
 	while (1) {
@@ -305,7 +310,7 @@ void check_timers(p *pp, int64 ns)
 		call_fn(t0->fn);
 		pop_timers(&pp->timers);
 	}
-
+	debugf("check_timers end\n");
 	pthread_mutex_unlock(&pp->timerslock);
 }
 
@@ -338,7 +343,6 @@ void timeSleep(int64 ns)
 	}
 
 	g *gp = getg();
-	gp->when = nanotime() + ns;
 	casgstatus(gp, gp->atomicstatus, _Gwaiting);
 	timer *t = newT(timer);
 	t->when = nanotime() + ns;
@@ -373,7 +377,6 @@ int main();
 // really main
 int rt0_go()
 {
-	usleep(1);
 	debugf("asm main\n");
 	memset(allgs, 0, 1024 * sizeof(uintptr));
 	int ret = pthread_key_create(&VirFSReg, NULL);
