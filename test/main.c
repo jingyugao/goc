@@ -14,7 +14,7 @@ void f()
 {
 	for (int i = 0; i < 500; i++) {
 		// usleep(500 * 1000);
-		printf("runing\n");
+		// printf("runing\n");
 		num++;
 		atomic_fetch_add(&atmicnum, 1);
 		semaphore_down(&sema);
@@ -40,7 +40,6 @@ int main()
 		semaphore_down(&waitgroup);
 	}
 
-	// timeSleep(10 * Second);
 	printf("%d,%d,%D\n", num, atmicnum, semaval);
 	assert(num <= atmicnum);
 

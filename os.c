@@ -12,7 +12,7 @@ void mstart_stub(m *mp)
 void sysmon()
 {
 	while (1) {
-		printf("sysmon\n");
+		debugf("sysmon\n");
 		sleep(1);
 	}
 }
@@ -23,7 +23,7 @@ void newosproc(m *mp)
 	pthread_attr_init(&attr);
 	uintptr stacksize;
 	if (pthread_attr_getstacksize(&attr, &stacksize) != 0) {
-		printf("pthread_attr_getstacksize error\n");
+		debugf("pthread_attr_getstacksize error\n");
 		exit(1);
 	}
 	// fp->stack.hi = stacksize; //???
@@ -33,9 +33,8 @@ void newosproc(m *mp)
 		exit(1);
 	}
 
-	printf("pthread_create\n");
 	if (pthread_create(&mp->thread, &attr, (void *)mstart_stub, mp) != 0) {
-		printf("pthread_create error\n");
+		debugf("pthread_create error\n");
 		exit(1);
 	}
 }
