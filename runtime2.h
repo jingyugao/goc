@@ -5,7 +5,7 @@
 
 #include "context.h"
 #include "mess.h"
-#define MAXPROC (4)
+#define MAXPROC (2)
 
 typedef struct {
 	uintptr f;

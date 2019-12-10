@@ -50,7 +50,7 @@ m *allocm(p *_p_, uintptr f)
 	g *newg = malg();
 	allgadd(newg);
 	int gid = allocGID();
-	newg->id = gid;
+	newg->id = -gid;
 	mp->g0 = newg;
 	mp->g0->m = mp;
 	mp->p = _p_;

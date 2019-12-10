@@ -115,8 +115,11 @@ void runqput(p *p, g *g)
 	if (t - h < size) {
 		p->runq[t % (size)] = g;
 		p->runqtail = t + 1;
+		pthread_mutex_unlock(&p->mu);
+		return;
 	}
-	pthread_mutex_unlock(&p->mu);
+
+	panicf("runq overflow\n");
 
 	// put to global runq
 };
@@ -142,26 +145,24 @@ void casgstatus(g *gp, uint32 oldval, uint32 newval)
 	gp->atomicstatus = newval;
 }
 
-void aligncall(Func fn)
-{
-}
+ 
 
 void mcall(void (*f)(g *))
 {
-	Context ctx2;
 	g *gp = getg();
 	g *g0 = gp->m->g0;
 	int ret = SaveContext(&gp->ctx);
-	for (int i = 0; i < 9; i++) {
-		ctx2.buffer[i] = g0->ctx.buffer[i];
-	}
-	// memcpy(&ctx2.reg,&g0->ctx.reg, sizeof(ctx2.reg));
-	ctx2.reg.pc = (uintptr)f;
-	ctx2.reg.rdi = (uintptr)gp;
+	// Context *ctx=&g0->ctx;
+	printf("156 %d\n",g0->id);
+	g0->ctx.reg.pc = (uintptr)f;
+	g0->ctx.reg.rdi = (uintptr)gp;
+	// g0->ctx.buffer[7]=(uintptr)f;
+	// g0->ctx.buffer[8]=(uintptr)gp;
+	printf("159\n");
 	if (ret == 0) {
 		tls *tls = gettls();
 		tls->ptr[0] = (uintptr)g0;
-		GetContext(&ctx2);
+		GetContext(&g0->ctx);
 		panicf("bad mcall\n");
 	}
 }
@@ -325,8 +326,8 @@ void schedule()
 			debugf("p%d no co to run:\n", getg()->m->p->id);
 			continue;
 		}
-		SwitchTo(getg(), nextg);
-		debugf("switch end\n");
+		execute(nextg);
+		panicf("return from execute\n");
 	}
 }
 
@@ -350,7 +351,7 @@ void timeSleep(int64 ns)
 	t->fn.f = (uintptr)wakeg;
 	p *_p_ = gp->m->p;
 	push_timers(&_p_->timers, t);
-	SwitchTo(gp, gp->m->g0);
+  gopark(NULL,NULL,0);
 	debugf("switch end\n");
 }
 
@@ -388,6 +389,7 @@ int rt0_go()
 	Func fg0;
 	fg0.f = (uintptr)schedule;
 	g0 = malg();
+	g0->id=-g0->id;
 	m *m0 = newT(m);
 	settls(&m0->tls);
 	m0->tls.ptr[0] = (uintptr)g0;

@@ -48,7 +48,7 @@ static void panic(error err)
 static void __panicf(const char *fileName, int line, const char *format, ...)
 {
 	error err;
-	int n = sprintf(err.str, "%s:%d: ", fileName, line);
+	int n = sprintf(err.str, "./%s:%d: ", fileName, line);
 	va_list args;
 	va_start(args, format);
 	n = vsprintf(err.str + n, format, args);

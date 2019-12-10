@@ -12,7 +12,7 @@ void mstart_stub(m *mp)
 void sysmon()
 {
 	while (1) {
-		debugf("sysmon\n");
+		printf("sysmon\n");
 		sleep(1);
 	}
 }
