@@ -4,7 +4,7 @@
 #include <assert.h>
 
 typedef struct {
-	uintptr rbx, rsp, rbp, r12, r13, r14, r15, pc_addr, rdi;
+	uintptr rbx, rsp, rbp, r12, r13, r14, r15, pc, rdi;
 } Register;
 
 typedef union {

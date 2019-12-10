@@ -5,7 +5,7 @@
 
 # g
 
-schedule->execute->gogo->{settls,switch ctx} // runnalbe->running
+schedule->execute->gogo->(settls,switch ctx) // runnalbe->running
 
 newproc->newproc1 // _Gidle->runnable
 gopark->mcall(park_m) -> // runing->wait
@@ -14,4 +14,10 @@ goexit0->
 Gosched->mcall(gosched_m)->goschedImpl->
 
 # m
-wakep->startm->
+startm->{newm or wake m}
+stopm->futexsleep
+
+# p
+wakep->startm
+
+

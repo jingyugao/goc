@@ -44,7 +44,7 @@ void pollDel(int fd, char mode)
 listhead *netpoll(bool block)
 {
 	listhead *list = newT(listhead);
-	init_list_head(list);
+	list_head_init(list);
 	while (1) {
 		fd_set rset, wset;
 		FD_COPY(&pollrset, &rset);

@@ -9,7 +9,12 @@ typedef struct listhead {
 	struct listhead *next;
 } listhead;
 
-static inline void init_list_head(listhead *list)
+#define list_first_entry(ptr, type, member)                                    \
+	list_entry((ptr)->next, type, member)
+
+#define list_entry(ptr, type, member) container_of(ptr, type, member)
+
+static inline void list_head_init(listhead *list)
 {
 	list->next = list;
 	list->prev = list;
@@ -39,9 +44,10 @@ static inline void __list_del(struct listhead *prev, struct listhead *next)
 	next = prev->next;
 }
 
-static inline void __list_del_clearprev(struct listhead *entry)
+static inline void list_del(struct listhead *entry)
 {
 	__list_del(entry->prev, entry->next);
+	entry->next = NULL;
 	entry->prev = NULL;
 }
 

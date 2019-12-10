@@ -10,16 +10,21 @@
 #define ALIGN(p, alignbytes)                                                   \
 	((void *)(((unsigned long)(p) + (alignbytes)-1) & ~((alignbytes)-1)))
 
+void call_fn(Func fn)
+{
+	((void (*)(uintptr))(fn.f))(fn.arg);
+}
+
 m *m0;
 g *g0;
 g *allgs[1024];
-
+_Atomic int main_started;
 static pthread_key_t VirFSReg = 0; // pointer to m.tls
 void settls(tls *ptr)
 {
 	int ret = pthread_setspecific(VirFSReg, ptr);
 	if (ret != 0) {
-		printf("pthread_setspecific error:%d\n", ret);
+		debugf("pthread_setspecific error:%d\n", ret);
 		abort();
 	}
 }
@@ -31,7 +36,7 @@ tls *gettls()
 
 p *getP()
 {
-	return getg()->mp->p;
+	return getg()->m->p;
 };
 
 // ctx must be within g struct
@@ -46,18 +51,18 @@ void gogo(Context *ctx)
 
 void SwitchTo(g *from, g *to)
 {
-	to->mp = from->mp;
-	to->mp->curg = to;
-	// printf("switch %d to %d\n", from->id, to->id);
+	to->m = from->m;
+	debugf("switch %d to %d\n", from->id, to->id);
 	int ret = SaveContext(&from->ctx);
+	debugf("ret,%d\n", ret);
 	if (ret == 0) {
 		gogo(&to->ctx);
 	}
 }
 
-static int gid = 1;
 int allocGID()
 {
+	static int gid = 1;
 	gid++;
 	return gid;
 }
@@ -102,7 +107,7 @@ void runqput(p *p, g *g)
 	if (g->id == 0) {
 		abort();
 	}
-	lock(&p->mu);
+	pthread_mutex_lock(&p->mu);
 	int h = p->runqhead;
 	int t = p->runqtail;
 
@@ -110,23 +115,28 @@ void runqput(p *p, g *g)
 	if (t - h < size) {
 		p->runq[t % (size)] = g;
 		p->runqtail = t + 1;
+		pthread_mutex_unlock(&p->mu);
+		return;
 	}
-	unlock(&p->mu);
+
+	panicf("runq overflow\n");
 
 	// put to global runq
 };
 
 g *runqget(p *p)
 {
-	lock(&p->mu);
+	debugf("runqget:%p\n", p);
+	pthread_mutex_lock(&p->mu);
 	if (p->runqhead == p->runqtail) {
-		unlock(&p->mu);
+		pthread_mutex_unlock(&p->mu);
 		return NULL;
 	}
 	int size = (sizeof(p->runq) / sizeof(p->runq[0]));
 	g *c = p->runq[p->runqhead % size];
 	p->runqhead++;
-	unlock(&p->mu);
+	pthread_mutex_unlock(&p->mu);
+	debugf("runqget end\n");
 	return c;
 }
 
@@ -137,14 +147,29 @@ void casgstatus(g *gp, uint32 oldval, uint32 newval)
 
 void mcall(void (*f)(g *))
 {
-	f(getg());
+	g *gp = getg();
+	g *g0 = gp->m->g0;
+	int ret = SaveContext(&gp->ctx);
+	// Context *ctx=&g0->ctx;
+	printf("156 %d\n", g0->id);
+	g0->ctx.reg.pc = (uintptr)f;
+	g0->ctx.reg.rdi = (uintptr)gp;
+	// g0->ctx.buffer[7]=(uintptr)f;
+	// g0->ctx.buffer[8]=(uintptr)gp;
+	printf("159\n");
+	if (ret == 0) {
+		tls *tls = gettls();
+		tls->ptr[0] = (uintptr)g0;
+		GetContext(&g0->ctx);
+		panicf("bad mcall\n");
+	}
 }
 
 void goexit0(g *gp)
 {
+	debugf("goexit0\n");
 	casgstatus(gp, gp->atomicstatus, _Gdead);
-	// todo schedule
-	gogo(&gp->mp->g0->ctx);
+	schedule();
 }
 
 void goexit1()
@@ -154,17 +179,19 @@ void goexit1()
 
 void goexit()
 {
-	printf("g %d exit\n", getg()->id);
+	debugf("g %d exit\n", getg()->id);
 	goexit1();
+}
+
+void goschedImpl(g *gp)
+{
+	runqput(gp->m->p, gp);
+	schedule();
 }
 
 void Gosched()
 {
-	g *curg = getg();
-	p *p = getP();
-	runqput(p, curg);
-	casgstatus(curg, curg->atomicstatus, _Grunnable);
-	SwitchTo(curg, curg->mp->g0);
+	mcall(goschedImpl);
 	return;
 };
 
@@ -175,14 +202,9 @@ g *getg()
 
 void systemstack(Func fn)
 {
-	printf("systemstack\n");
-	g0->fn = fn;
-	int ret = SaveContext(&g0->ctx);
-	printf("ret:%d\n", ret);
-	if (ret == 0) {
-		((void (*)(uintptr))(g0->fn.f))(g0->fn.arg);
-		GetContext(&g0->ctx);
-	}
+	debugf("systemstack call\n");
+	// todo
+	call_fn(fn);
 }
 
 g *newproc1(Func fn)
@@ -193,9 +215,14 @@ g *newproc1(Func fn)
 	newg->id = gid;
 	newg->fn = fn;
 	newg->ctx.reg.rdi = (uintptr)newg->fn.arg;
-	newg->ctx.reg.pc_addr = (uintptr)newg->fn.f;
+	newg->ctx.reg.pc = (uintptr)newg->fn.f;
 	casgstatus(newg, newg->atomicstatus, _Grunnable);
-	runqput(getP(), newg);
+	runqput(getg()->m->p, newg);
+
+	if (atomic_load(&sched.npidle) != 0 &&
+	    atomic_load(&main_started) == 1) {
+		wakep();
+	}
 	return newg;
 }
 
@@ -210,22 +237,30 @@ void newproc(uintptr f, uintptr arg)
 
 void schedinit()
 {
-	printf("schedinit\n");
+	debugf("schedinit\n");
 	g *_g_ = getg();
-	for (int i = 0; i < MAXPORC; i++) {
-		allp[i] = newT(p);
-		memset(allp[i], 0, sizeof(p));
-		allp[i]->id = i;
+	void *xx;
+	for (int i = 0; i < MAXPROC; i++) {
+		p *_p_ = newT(p);
+		// memset(allp[i], 0, sizeof(p));
+		_p_->id = i;
+		_p_->link = sched.pidle;
+		if (i != 0) {
+			atomic_fetch_add(&sched.npidle, 1);
+			sched.pidle = _p_;
+		}
+		allp[i] = _p_;
 	}
 
-	_g_->mp->p = allp[0];
-	allp[0]->mp = _g_->mp;
+	_g_->m->p = allp[0];
+	allp[0]->m = _g_->m;
 }
 
 int main_main();
 
 g *runqsteal(p *_p_, p *p2, bool stealRunNextG)
 {
+	debugf("runqsteal\n");
 	if (p2 == NULL || p2 == _p_) {
 		return NULL;
 	}
@@ -233,6 +268,7 @@ g *runqsteal(p *_p_, p *p2, bool stealRunNextG)
 	if (nextg != NULL) {
 		return nextg;
 	}
+	debugf("runqsteal end\n");
 	return NULL;
 }
 
@@ -240,30 +276,27 @@ void check_timers(p *pp, int64 ns);
 
 g *findRunnable()
 {
-	p *_p_ = getg()->mp->p;
+	debugf("findrunnable\n");
+	p *_p_ = getg()->m->p;
 	check_timers(_p_, 0);
 	g *nextg = runqget(_p_);
-	if (nextg == NULL) {
-		for (int i = 0; i < MAXPORC; i++) {
-			nextg = runqsteal(_p_, allp[i], true);
-			if (nextg != NULL) {
-				printf("%d steal %d from %d\n", _p_->id,
-				       nextg->id, allp[i]->id);
-				break;
-			}
-		}
+	if (nextg != NULL) {
+		return nextg;
 	}
-	if (nextg == NULL) {
-		return NULL;
+	for (int i = 0; i < MAXPROC; i++) {
+		nextg = runqsteal(_p_, allp[i], true);
+		if (nextg != NULL) {
+			debugf("%d steal %d from %d\n", _p_->id, nextg->id,
+			       allp[i]->id);
+			break;
+		}
 	}
 	return nextg;
 }
-void call_fn(Func fn)
-{
-	((void (*)(uintptr))(fn.f))(fn.arg);
-}
+
 void check_timers(p *pp, int64 ns)
 {
+	debugf("check_timers,%p\n", pp);
 	pthread_mutex_lock(&pp->timerslock);
 	ns = nanotime();
 	while (1) {
@@ -277,30 +310,29 @@ void check_timers(p *pp, int64 ns)
 		call_fn(t0->fn);
 		pop_timers(&pp->timers);
 	}
-
+	debugf("check_timers end\n");
 	pthread_mutex_unlock(&pp->timerslock);
 }
 
 // must on g0
 void schedule()
 {
-	printf("schedule\n");
+	debugf("schedule %d\n", getg()->m->p->id);
 	while (1) {
 		g *nextg = findRunnable();
 		if (nextg == NULL) {
 			usleep(200 * 1000);
-			printf("p%lld no co to run:\n", getg()->mp->id);
+			debugf("p%d no co to run:\n", getg()->m->p->id);
 			continue;
 		}
-		SwitchTo(getg(), nextg);
+		execute(nextg);
+		panicf("return from execute\n");
 	}
-
-	exit(0);
 }
 
 void wakeg(g *gp)
 {
-	p *_p_ = getg()->mp->p;
+	p *_p_ = getg()->m->p;
 	runqput(_p_, gp);
 }
 
@@ -311,21 +343,21 @@ void timeSleep(int64 ns)
 	}
 
 	g *gp = getg();
-	gp->when = nanotime() + ns;
 	casgstatus(gp, gp->atomicstatus, _Gwaiting);
 	timer *t = newT(timer);
 	t->when = nanotime() + ns;
 	t->fn.arg = (uintptr)gp;
 	t->fn.f = (uintptr)wakeg;
-	p *_p_ = gp->mp->p;
+	p *_p_ = gp->m->p;
 	push_timers(&_p_->timers, t);
-	SwitchTo(gp, gp->mp->g0);
+	gopark(NULL, NULL, 0);
+	debugf("switch end\n");
 }
 
 void mstart1()
 {
 	g *_g_ = getg();
-	Func fn = _g_->mp->mstartfn;
+	Func fn = _g_->m->mstartfn;
 	if (fn.f != 0) {
 		((void (*)(uintptr))(fn.f))(fn.arg);
 	}
@@ -336,38 +368,40 @@ void mstart1()
 void mstart()
 {
 	mstart1();
-	pthread_exit(0);
+	// never return
+	abort();
+	// pthread_exit(0);
 }
 
 int main();
 // really main
 int rt0_go()
 {
-	printf("asm main\n");
+	debugf("asm main\n");
 	memset(allgs, 0, 1024 * sizeof(uintptr));
 	int ret = pthread_key_create(&VirFSReg, NULL);
 	if (ret != 0) {
-		printf("pthread_key_create error:%d\n", ret);
+		debugf("pthread_key_create error:%d\n", ret);
 		abort();
 	}
 	// init g0
 	Func fg0;
 	fg0.f = (uintptr)schedule;
 	g0 = malg();
+	g0->id = -g0->id;
 	m *m0 = newT(m);
 	settls(&m0->tls);
 	m0->tls.ptr[0] = (uintptr)g0;
-	g0->mp = m0;
+	g0->m = m0;
 	m0->g0 = g0;
 	m0->curg = g0;
 	allgs[0] = g0;
 	g0->id = 0;
 	g0->fn = fg0;
-	g0->ctx.reg.pc_addr = (long)g0->fn.f;
+	g0->ctx.reg.pc = (long)g0->fn.f;
 
 	schedinit();
 	newproc((uintptr)main, 0);
-	wakep();
 	newm((uintptr)sysmon, 0);
 	// sleep(1000);
 	mstart();
@@ -379,11 +413,11 @@ int rt0_go()
 int main()
 {
 	if (!g0) {
-		printf("main must called after rt0_go\n");
+		debugf("main must called after rt0_go\n");
 		abort();
 	}
+	atomic_store(&main_started, 1);
 	main_main();
-
 	exit(0);
 	return 0;
 }

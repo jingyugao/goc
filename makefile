@@ -7,7 +7,7 @@ force:
 
 WNO=-Wno-unused-function  -Wno-unused-variable
 CC=gcc
-CF=-g -Wall -std=c11 $(WNO)
+CF=-g -Wall -Werror -std=c11 $(WNO) 
 # runtime=-e _rt0_go runtime.c runtime2.c time.c context.c proc.c os.c
 runtime=-e _rt0_go *.c
 
@@ -45,6 +45,10 @@ test_slice:force
 
 test_time:force
 	$(CC) $(CF) -o ./bin/$@ ./test/time.c time.c
+	./bin/$@
+
+test_sync:force
+	$(CC) $(CF) -o ./bin/$@ ./test/sync.c sync.c
 	./bin/$@
 
 test:clean test_vector test_slice test_time test_netpoll test_main 

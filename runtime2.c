@@ -2,5 +2,5 @@
 #include <stdlib.h>
 
 m *allm;
-p *allp[MAXPORC];
-pthread_mutex_t allpLock;
+p *allp[MAXPROC];
+schedt sched;

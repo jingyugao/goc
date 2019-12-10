@@ -5,7 +5,7 @@
 
 #include "context.h"
 #include "mess.h"
-#define MAXPORC (4)
+#define MAXPROC (2)
 
 typedef struct {
 	uintptr f;
@@ -26,15 +26,16 @@ typedef struct {
 	Func fn;
 	Stack stack;
 	int64 when;
-	struct m *mp;
+	struct m *m;
+
 } g;
 
 typedef struct p {
 	int id;
-	struct m *mp;
-
+	struct m *m;
+	struct p *link;
 	// m protect runq*
-	mutex mu;
+	pthread_mutex_t mu;
 	int runqhead;
 	int runqtail;
 	g *runq[256];
@@ -56,12 +57,19 @@ typedef struct m {
 	tls tls;
 	g *curg;
 	p *p;
-	int64 id;
 	pthread_t thread;
+
+	void *waitlock;
+	bool (*waitunlockf)(g *, void *);
 } m;
 
+typedef struct {
+	pthread_mutex_t lock;
+	_Atomic int npidle;
+	p *pidle;
+} schedt;
+extern schedt sched;
 extern m *allm;
-extern p *allp[MAXPORC];
-extern pthread_mutex_t allpLock;
+extern p *allp[MAXPROC];
 
 #endif
