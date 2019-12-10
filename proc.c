@@ -44,6 +44,13 @@ void newm(uintptr f, p *_p_)
 	newm1(mp);
 }
 
+void acquirep(p *_p_)
+{
+	m *mp = getg()->m;
+	mp->p = _p_;
+	_p_->m = mp;
+}
+
 m *allocm(p *_p_, uintptr f)
 {
 	m *mp = newT(m);
@@ -54,7 +61,12 @@ m *allocm(p *_p_, uintptr f)
 	g0->is_g0 = true;
 	mp->g0 = g0;
 	mp->g0->m = mp;
-	mp->p = _p_;
+
+	if (_p_) {
+		mp->p = _p_;
+		_p_->m = mp;
+	}
+
 	mp->mstartfn.f = f;
 	return mp;
 }
@@ -77,6 +89,9 @@ void execute(g *gp)
 	_g_->m->curg = gp;
 	gp->m = _g_->m;
 	assert(_g_->m);
+	if (readgstatus(gp) != _Grunnable){
+		printf("%d\n",readgstatus(gp));
+	}
 	assert(readgstatus(gp) == _Grunnable);
 	casgstatus(gp, _Grunnable, _Grunning);
 	gogo(&gp->ctx);
@@ -87,6 +102,7 @@ void park_m(g *gp)
 	debugf("park_m on g0\n");
 	g *_g_ = getg();
 	casgstatus(gp, _Grunning, _Gwaiting);
+	assert(gp==getg()->m->curg);
 	dropg();
 	bool (*fn)(g *, void *) = _g_->m->waitunlockf;
 	if (fn != NULL) {

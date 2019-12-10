@@ -2,7 +2,7 @@
 #define RUNTIME2_H
 
 #include <pthread.h>
-
+#include <stdatomic.h>
 #include "context.h"
 #include "mess.h"
 #define MAXPROC (8)
@@ -20,7 +20,7 @@ typedef struct {
 } Stack;
 
 typedef struct {
-	uint32 atomicstatus;
+	_Atomic	uint32 atomicstatus;
 	int id;
 	Context ctx;
 	Func fn;

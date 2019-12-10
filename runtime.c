@@ -87,6 +87,7 @@ g *malg()
 
 void runqput(p *p, g *g)
 {
+
 	assert(readgstatus(g) == _Grunnable);
 	pthread_mutex_lock(&p->mu);
 	int h = p->runqhead;
@@ -118,17 +119,22 @@ g *runqget(p *p)
 	p->runqhead++;
 	pthread_mutex_unlock(&p->mu);
 	debugf("runqget end\n");
+	if(readgstatus(c)!=_Grunnable){
+		printf("g:%d\a",readgstatus(c));
+	}
+	assert(readgstatus(c)==_Grunnable);
 	return c;
 };
 
 uint32 readgstatus(g *gp)
 {
-	return gp->atomicstatus;
+	return atomic_load(&gp->atomicstatus);
 }
 
 void casgstatus(g *gp, uint32 oldval, uint32 newval)
 {
-	gp->atomicstatus = newval;
+	printf("cas g%d from %d to %d\n",gp->id,oldval,newval);
+	atomic_store(&gp->atomicstatus,newval);
 }
 
 void mcall(void (*f)(g *))
@@ -149,6 +155,7 @@ void mcall(void (*f)(g *))
 
 void goexit0(g *gp)
 {
+	assert(gp==getg()->m->curg);
 	debugf("goexit0\n");
 	assert(readgstatus(gp) == _Grunning);
 	casgstatus(gp, _Grunning, _Gdead);
@@ -170,6 +177,7 @@ void goexit()
 
 void goschedImpl(g *gp)
 {
+	assert(gp==getg()->m->curg);
 	assert(readgstatus(gp) == _Grunning);
 	casgstatus(gp, _Grunning, _Grunnable);
 	runqput(gp->m->p, gp);

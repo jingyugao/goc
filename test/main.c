@@ -36,6 +36,7 @@ int main()
 	int n = 10;
 	for (int i = 0; i < n; i++) {
 		go(f, NULL);
+		timeSleep(Second);
 	}
 
 	for (int i = 0; i < n; i++) {
