@@ -5,7 +5,7 @@
 
 #include "context.h"
 #include "mess.h"
-#define MAXPROC (2)
+#define MAXPROC (8)
 
 typedef struct {
 	uintptr f;
@@ -28,6 +28,7 @@ typedef struct {
 	int64 when;
 	struct m *m;
 
+	bool is_g0;
 } g;
 
 typedef struct p {
@@ -67,6 +68,7 @@ typedef struct {
 	pthread_mutex_t lock;
 	_Atomic int npidle;
 	p *pidle;
+	g *gfree;
 } schedt;
 extern schedt sched;
 extern m *allm;

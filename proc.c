@@ -47,11 +47,12 @@ void newm(uintptr f, p *_p_)
 m *allocm(p *_p_, uintptr f)
 {
 	m *mp = newT(m);
-	g *newg = malg();
-	allgadd(newg);
+	g *g0 = malg();
+	allgadd(g0);
 	int gid = allocGID();
-	newg->id = -gid;
-	mp->g0 = newg;
+	g0->id = gid;
+	g0->is_g0 = true;
+	mp->g0 = g0;
 	mp->g0->m = mp;
 	mp->p = _p_;
 	mp->mstartfn.f = f;
@@ -65,9 +66,9 @@ void newm1(m *mp)
 
 void dropg()
 {
-	// g *_g_ = getg();
-	// _g_->m->curg->m = NULL;
-	// _g_->m->curg = NULL;
+	g *_g_ = getg();
+	_g_->m->curg->m = NULL;
+	_g_->m->curg = NULL;
 }
 
 void execute(g *gp)
@@ -75,6 +76,8 @@ void execute(g *gp)
 	g *_g_ = getg();
 	_g_->m->curg = gp;
 	gp->m = _g_->m;
+	assert(_g_->m);
+	assert(readgstatus(gp) == _Grunnable);
 	casgstatus(gp, _Grunnable, _Grunning);
 	gogo(&gp->ctx);
 }
@@ -122,6 +125,8 @@ void ready(g *gp)
 	debugf("ready,%p\n", gp);
 	casgstatus(gp, _Gwaiting, _Grunnable);
 	g *_g_ = getg();
+	assert(_g_->m);
+	assert(_g_->m->p);
 	runqput(_g_->m->p, gp);
 	if (atomic_load(&sched.npidle) != 0) {
 		// wakep();

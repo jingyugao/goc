@@ -8,13 +8,14 @@ int semaval = 0;
 
 semaphore waitgroup;
 int num = 0;
-_Atomic int atmicnum = 0;
+_Atomic int atomicnum = 0;
 
 void f()
 {
-	for (int i = 0; i < 500; i++) {
+	for (int i = 0; i < 5000; i++) {
 		// usleep(500 * 1000);
-		printf("runing %d\n", atomic_fetch_add(&atmicnum, 1));
+		int t = atomic_fetch_add(&atomicnum, 1);
+		// printf("runing %d\n",t );
 		num++;
 
 		semaphore_down(&sema);
@@ -41,8 +42,8 @@ int main()
 		semaphore_down(&waitgroup);
 	}
 
-	printf("%d,%d,%D\n", num, atmicnum, semaval);
-	assert(num <= atmicnum);
+	printf("%d,%d,%D\n", num, atomicnum, semaval);
+	assert(num <= atomicnum);
 
 	test_ok;
 }

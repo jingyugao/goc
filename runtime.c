@@ -34,30 +34,13 @@ tls *gettls()
 	return (tls *)pthread_getspecific(VirFSReg);
 }
 
-p *getP()
-{
-	return getg()->m->p;
-};
-
 // ctx must be within g struct
 void gogo(Context *ctx)
 {
 	g *gp = container_of(ctx, g, ctx);
-	// g *gp = (g *)((void *)ctx - (void *)(&((g *)NULL)->ctx));
 	tls *tls = gettls();
 	tls->ptr[0] = (uintptr)gp;
 	GetContext(ctx);
-}
-
-void SwitchTo(g *from, g *to)
-{
-	to->m = from->m;
-	debugf("switch %d to %d\n", from->id, to->id);
-	int ret = SaveContext(&from->ctx);
-	debugf("ret,%d\n", ret);
-	if (ret == 0) {
-		gogo(&to->ctx);
-	}
 }
 
 int allocGID()
@@ -104,9 +87,7 @@ g *malg()
 
 void runqput(p *p, g *g)
 {
-	if (g->id == 0) {
-		abort();
-	}
+	assert(readgstatus(g) == _Grunnable);
 	pthread_mutex_lock(&p->mu);
 	int h = p->runqhead;
 	int t = p->runqtail;
@@ -138,6 +119,11 @@ g *runqget(p *p)
 	pthread_mutex_unlock(&p->mu);
 	debugf("runqget end\n");
 	return c;
+};
+
+uint32 readgstatus(g *gp)
+{
+	return gp->atomicstatus;
 }
 
 void casgstatus(g *gp, uint32 oldval, uint32 newval)
@@ -148,15 +134,11 @@ void casgstatus(g *gp, uint32 oldval, uint32 newval)
 void mcall(void (*f)(g *))
 {
 	g *gp = getg();
+	assert(gp->m);
 	g *g0 = gp->m->g0;
-	int ret = SaveContext(&gp->ctx);
-	// Context *ctx=&g0->ctx;
-	printf("156 %d\n", g0->id);
 	g0->ctx.reg.pc = (uintptr)f;
 	g0->ctx.reg.rdi = (uintptr)gp;
-	// g0->ctx.buffer[7]=(uintptr)f;
-	// g0->ctx.buffer[8]=(uintptr)gp;
-	printf("159\n");
+	int ret = SaveContext(&gp->ctx);
 	if (ret == 0) {
 		tls *tls = gettls();
 		tls->ptr[0] = (uintptr)g0;
@@ -168,7 +150,10 @@ void mcall(void (*f)(g *))
 void goexit0(g *gp)
 {
 	debugf("goexit0\n");
-	casgstatus(gp, gp->atomicstatus, _Gdead);
+	assert(readgstatus(gp) == _Grunning);
+	casgstatus(gp, _Grunning, _Gdead);
+	dropg();
+	// put g to cache
 	schedule();
 }
 
@@ -185,7 +170,10 @@ void goexit()
 
 void goschedImpl(g *gp)
 {
+	assert(readgstatus(gp) == _Grunning);
+	casgstatus(gp, _Grunning, _Grunnable);
 	runqput(gp->m->p, gp);
+	dropg();
 	schedule();
 }
 
@@ -317,6 +305,7 @@ void check_timers(p *pp, int64 ns)
 // must on g0
 void schedule()
 {
+	assert(getg()->is_g0);
 	debugf("schedule %d\n", getg()->m->p->id);
 	while (1) {
 		g *nextg = findRunnable();
@@ -333,6 +322,7 @@ void schedule()
 void wakeg(g *gp)
 {
 	p *_p_ = getg()->m->p;
+	casgstatus(gp, _Gwaiting, _Grunnable);
 	runqput(_p_, gp);
 }
 
@@ -389,6 +379,7 @@ int rt0_go()
 	fg0.f = (uintptr)schedule;
 	g0 = malg();
 	g0->id = -g0->id;
+	g0->is_g0 = true;
 	m *m0 = newT(m);
 	settls(&m0->tls);
 	m0->tls.ptr[0] = (uintptr)g0;
