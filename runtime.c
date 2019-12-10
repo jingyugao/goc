@@ -126,7 +126,7 @@ void runqput(p *p, g *g)
 
 g *runqget(p *p)
 {
-	debugf("runqget:%p\n",p);
+	debugf("runqget:%p\n", p);
 	pthread_mutex_lock(&p->mu);
 	if (p->runqhead == p->runqtail) {
 		pthread_mutex_unlock(&p->mu);
@@ -145,15 +145,13 @@ void casgstatus(g *gp, uint32 oldval, uint32 newval)
 	gp->atomicstatus = newval;
 }
 
- 
-
 void mcall(void (*f)(g *))
 {
 	g *gp = getg();
 	g *g0 = gp->m->g0;
 	int ret = SaveContext(&gp->ctx);
 	// Context *ctx=&g0->ctx;
-	printf("156 %d\n",g0->id);
+	printf("156 %d\n", g0->id);
 	g0->ctx.reg.pc = (uintptr)f;
 	g0->ctx.reg.rdi = (uintptr)gp;
 	// g0->ctx.buffer[7]=(uintptr)f;
@@ -185,8 +183,9 @@ void goexit()
 	goexit1();
 }
 
-void goschedImpl(g *gp) {
-	runqput(gp->m->p,gp);
+void goschedImpl(g *gp)
+{
+	runqput(gp->m->p, gp);
 	schedule();
 }
 
@@ -297,7 +296,7 @@ g *findRunnable()
 
 void check_timers(p *pp, int64 ns)
 {
-	debugf("check_timers,%p\n",pp);
+	debugf("check_timers,%p\n", pp);
 	pthread_mutex_lock(&pp->timerslock);
 	ns = nanotime();
 	while (1) {
@@ -351,7 +350,7 @@ void timeSleep(int64 ns)
 	t->fn.f = (uintptr)wakeg;
 	p *_p_ = gp->m->p;
 	push_timers(&_p_->timers, t);
-  gopark(NULL,NULL,0);
+	gopark(NULL, NULL, 0);
 	debugf("switch end\n");
 }
 
@@ -389,7 +388,7 @@ int rt0_go()
 	Func fg0;
 	fg0.f = (uintptr)schedule;
 	g0 = malg();
-	g0->id=-g0->id;
+	g0->id = -g0->id;
 	m *m0 = newT(m);
 	settls(&m0->tls);
 	m0->tls.ptr[0] = (uintptr)g0;

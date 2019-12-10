@@ -37,12 +37,13 @@ static void panic(error err)
 
 #define panicf(format, arg...) __panicf(__FILE__, __LINE__, format, ##arg)
 
-#define debugf(format, arg...) logf("./%s:%d " format, __FILE__, __LINE__, ##arg)
+#define debugf(format, arg...)                                                 \
+	logf("./%s:%d " format, __FILE__, __LINE__, ##arg)
 
 #ifdef DEBUG_RT
-#define logf(format,arg...) printf(format, ##arg)
+#define logf(format, arg...) printf(format, ##arg)
 #else
-#define logf(format,arg...)
+#define logf(format, arg...)
 #endif
 
 static void __panicf(const char *fileName, int line, const char *format, ...)

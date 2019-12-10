@@ -14,9 +14,9 @@ void f()
 {
 	for (int i = 0; i < 500; i++) {
 		// usleep(500 * 1000);
-		printf("runing %d\n",atomic_fetch_add(&atmicnum, 1));
+		printf("runing %d\n", atomic_fetch_add(&atmicnum, 1));
 		num++;
-	
+
 		semaphore_down(&sema);
 		// timeSleep(1);
 		Gosched();

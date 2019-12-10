@@ -1,7 +1,5 @@
 #include "sync.h"
 
-
-
 void semaphore_init(semaphore *sem, int val)
 {
 	pthread_mutex_init(&sem->lock, NULL);
