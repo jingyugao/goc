@@ -87,7 +87,6 @@ g *malg()
 
 void runqput(p *p, g *g)
 {
-
 	assert(readgstatus(g) == _Grunnable);
 	pthread_mutex_lock(&p->mu);
 	int h = p->runqhead;
@@ -101,26 +100,27 @@ void runqput(p *p, g *g)
 		return;
 	}
 
-	panicf("runq overflow\n");
+	pthread_mutex_unlock(&p->mu);
+	printf("runq overflow\n");
 
 	// put to global runq
 };
 
-g *runqget(p *p)
+g *runqget(p *_p_)
 {
-	debugf("runqget:%p\n", p);
-	pthread_mutex_lock(&p->mu);
-	if (p->runqhead == p->runqtail) {
-		pthread_mutex_unlock(&p->mu);
+	debugf("runqget:%p\n", _p_);
+	pthread_mutex_lock(&_p_->mu);
+	if (_p_->runqhead == _p_->runqtail) {
+		pthread_mutex_unlock(&_p_->mu);
 		return NULL;
 	}
-	int size = (sizeof(p->runq) / sizeof(p->runq[0]));
-	g *c = p->runq[p->runqhead % size];
-	p->runqhead++;
-	pthread_mutex_unlock(&p->mu);
+	int size = (sizeof(_p_->runq) / sizeof(_p_->runq[0]));
+	g *c = _p_->runq[_p_->runqhead % size];
+	_p_->runqhead++;
+	pthread_mutex_unlock(&_p_->mu);
 	debugf("runqget end\n");
 	if(readgstatus(c)!=_Grunnable){
-		printf("g:%d\a",readgstatus(c));
+		printf("g:%d,%p\a",readgstatus(c),c->m);
 	}
 	assert(readgstatus(c)==_Grunnable);
 	return c;
@@ -133,7 +133,7 @@ uint32 readgstatus(g *gp)
 
 void casgstatus(g *gp, uint32 oldval, uint32 newval)
 {
-	printf("cas g%d from %d to %d\n",gp->id,oldval,newval);
+	// printf("cas g%d from %d to %d\n",gp->id,oldval,newval);
 	atomic_store(&gp->atomicstatus,newval);
 }
 
@@ -239,6 +239,7 @@ void schedinit()
 	for (int i = 0; i < MAXPROC; i++) {
 		p *_p_ = newT(p);
 		// memset(allp[i], 0, sizeof(p));
+		pthread_mutex_init(&_p_->mu,0);
 		_p_->id = i;
 		_p_->link = sched.pidle;
 		if (i != 0) {
@@ -322,6 +323,7 @@ void schedule()
 			debugf("p%d no co to run:\n", getg()->m->p->id);
 			continue;
 		}
+		assert(readgstatus(nextg) == _Grunnable);
 		execute(nextg);
 		panicf("return from execute\n");
 	}

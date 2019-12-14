@@ -90,7 +90,7 @@ void execute(g *gp)
 	gp->m = _g_->m;
 	assert(_g_->m);
 	if (readgstatus(gp) != _Grunnable){
-		printf("%d\n",readgstatus(gp));
+		panicf("%d\n",readgstatus(gp));
 	}
 	assert(readgstatus(gp) == _Grunnable);
 	casgstatus(gp, _Grunnable, _Grunning);
