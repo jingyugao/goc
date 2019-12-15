@@ -5,7 +5,10 @@
 #include <stdatomic.h>
 #include "context.h"
 #include "mess.h"
-#define MAXPROC (8)
+
+#ifndef MAXPROC
+#define MAXPROC (16)
+#endif
 
 typedef struct {
 	uintptr f;
@@ -21,6 +24,7 @@ typedef struct {
 
 typedef struct {
 	_Atomic uint32 atomicstatus;
+	bool preempt;
 	int id;
 	Context ctx;
 	Func fn;
@@ -41,7 +45,7 @@ typedef struct p {
 	int runqtail;
 	g *runq[256];
 
-	g *curg;
+	int64 sched_when;
 
 	vector timers;
 	pthread_mutex_t timerslock;
@@ -69,6 +73,8 @@ typedef struct {
 	_Atomic int npidle;
 	p *pidle;
 	g *gfree;
+
+	_Atomic int preempt_enable;
 } schedt;
 extern schedt sched;
 extern m *allm;

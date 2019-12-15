@@ -3,6 +3,7 @@
 #include "runtime2.h"
 #include <pthread.h>
 #include "mess.h"
+#include"time2.h"
 m *allocm(p *_p_, uintptr f);
 void newm1(m *mp);
 void startm(p *_p_, bool spiinning);
@@ -94,6 +95,7 @@ void execute(g *gp)
 	}
 	assert(readgstatus(gp) == _Grunnable);
 	casgstatus(gp, _Grunnable, _Grunning);
+	getg()->m->p->sched_when=nanotime();
 	gogo(&gp->ctx);
 }
 
@@ -145,7 +147,7 @@ void ready(g *gp)
 	assert(_g_->m->p);
 	runqput(_g_->m->p, gp);
 	if (atomic_load(&sched.npidle) != 0) {
-		// wakep();
+		wakep();
 	}
 	debugf("ready end\n");
 }

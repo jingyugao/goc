@@ -251,6 +251,7 @@ void schedinit()
 
 	_g_->m->p = allp[0];
 	allp[0]->m = _g_->m;
+	atomic_store(&sched.preempt_enable, 1);
 }
 
 int main_main();
@@ -327,6 +328,11 @@ void schedule()
 		execute(nextg);
 		panicf("return from execute\n");
 	}
+}
+
+bool preempt_enable()
+{
+	return atomic_load(&sched.preempt_enable) == 1;
 }
 
 void wakeg(g *gp)

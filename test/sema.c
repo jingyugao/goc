@@ -9,15 +9,22 @@ int main() __asm__("_main_main");
 void __attribute__((no_instrument_function))
 __cyg_profile_func_enter(void *this_func, void *call_site)
 {
-	// printf("%s\n",this_func);
+	if (!preempt_enable()) {
+		return;
+	}
+	g *_g_ = getg();
+	if (!_g_->preempt) {
+		return;
+	}
+	printf("retake\n");
+	Gosched();
 }
 
 void __attribute__((no_instrument_function))
 __cyg_profile_func_exit(void *this_func, void *call_site)
 {
-	
 }
-//-------------------------------------------
+//
 
 semaphore sema;
 int semaval = 0;
@@ -28,7 +35,7 @@ _Atomic int atomicnum = 0;
 
 void f()
 {
-	for (int i = 0; i < 5000; i++) {
+	for (int i = 0; i < 50000; i++) {
 		num++;
 		atomic_fetch_add(&atomicnum, 1);
 		semaphore_down(&sema);
@@ -46,7 +53,6 @@ int main()
 	int n = 20;
 	for (int i = 0; i < n; i++) {
 		go(f, NULL);
-		timeSleep(Second);
 	}
 
 	for (int i = 0; i < n; i++) {

@@ -40,6 +40,6 @@ void mcall(void (*f)(g *));
 void systemstack(Func fn);
 void runqput(p *p, g *g);
 g *runqget(p *_p_);
-bool open_retake();
+bool preempt_enable();
 #define go(f, arg) newproc((uintptr)f, (uintptr)arg)
 #endif

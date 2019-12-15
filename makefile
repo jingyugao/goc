@@ -9,7 +9,7 @@ WNO=-Wno-unused-function  -Wno-unused-variable
 CC=gcc
 CF= -g -O0 -Wall -Werror -std=c11 $(WNO) 
 # runtime=-e _rt0_go runtime.c runtime2.c time.c context.c proc.c os.c
-runtime=-e _rt0_go *.c
+runtime=-e _rt0_go -finstrument-functions *.o
 
 fmt:force
 	clang-format -i *.[hc]
@@ -22,12 +22,19 @@ check_fmt:fmt
 clean:force
 	rm -rf *dSYM *.out ./bin/*
 
-test_main:force
-	$(CC) $(CF) -o ./bin/$@ $(runtime)
+runtime:force
+	$(CC) $(CF) -c *.c
+
+test_sema:runtime
+	$(CC) $(CF) -o ./bin/$@ ./test/sema.c $(runtime)
 	./bin/$@
 
-runtime:force
-	$(CC) $(CF) -c $(runtime)
+test_retake:force
+	$(CC) $(CF) -DMAXPROC=1 -c *.c
+	$(CC) $(CF) -o ./bin/$@ ./test/retake.c $(runtime)
+	./bin/$@ || ([ $$? -eq 6 ])
+	$(CC) $(CF) -DCALL_FF -o ./bin/$@ ./test/retake.c $(runtime)
+	./bin/$@
 
 test_netpoll:force
 	$(CC) $(CF) -o ./bin/$@ ./test/netpoll.c netpoll.c
@@ -49,8 +56,4 @@ test_time:force
 	$(CC) $(CF) -o ./bin/$@ ./test/time.c time.c
 	./bin/$@
 
-test_sync:force
-	$(CC) $(CF) -o ./bin/$@ ./test/sync.c sync.c
-	./bin/$@
-
-test:clean test_vector test_slice test_time test_netpoll test_main 
+test:clean test_vector test_slice test_time test_netpoll test_sema test_retake
