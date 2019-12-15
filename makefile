@@ -7,7 +7,7 @@ force:
 
 WNO=-Wno-unused-function  -Wno-unused-variable
 CC=gcc
-CF=-g -O0 -Wall -Werror -std=c11 $(WNO) 
+CF= -g -O0 -Wall -Werror -std=c11 $(WNO) 
 # runtime=-e _rt0_go runtime.c runtime2.c time.c context.c proc.c os.c
 runtime=-e _rt0_go *.c
 
@@ -23,9 +23,11 @@ clean:force
 	rm -rf *dSYM *.out ./bin/*
 
 test_main:force
-	$(CC) $(CF) -o ./bin/$@ ./test/main.c $(runtime)
+	$(CC) $(CF) -o ./bin/$@ $(runtime)
 	./bin/$@
 
+runtime:force
+	$(CC) $(CF) -c $(runtime)
 
 test_netpoll:force
 	$(CC) $(CF) -o ./bin/$@ ./test/netpoll.c netpoll.c

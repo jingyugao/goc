@@ -89,8 +89,8 @@ void execute(g *gp)
 	_g_->m->curg = gp;
 	gp->m = _g_->m;
 	assert(_g_->m);
-	if (readgstatus(gp) != _Grunnable){
-		panicf("%d\n",readgstatus(gp));
+	if (readgstatus(gp) != _Grunnable) {
+		panicf("%d\n", readgstatus(gp));
 	}
 	assert(readgstatus(gp) == _Grunnable);
 	casgstatus(gp, _Grunnable, _Grunning);
@@ -102,7 +102,7 @@ void park_m(g *gp)
 	debugf("park_m on g0\n");
 	g *_g_ = getg();
 	casgstatus(gp, _Grunning, _Gwaiting);
-	assert(gp==getg()->m->curg);
+	assert(gp == getg()->m->curg);
 	dropg();
 	bool (*fn)(g *, void *) = _g_->m->waitunlockf;
 	if (fn != NULL) {

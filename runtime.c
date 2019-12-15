@@ -119,10 +119,10 @@ g *runqget(p *_p_)
 	_p_->runqhead++;
 	pthread_mutex_unlock(&_p_->mu);
 	debugf("runqget end\n");
-	if(readgstatus(c)!=_Grunnable){
-		printf("g:%d,%p\a",readgstatus(c),c->m);
+	if (readgstatus(c) != _Grunnable) {
+		printf("g:%d,%p\a", readgstatus(c), c->m);
 	}
-	assert(readgstatus(c)==_Grunnable);
+	assert(readgstatus(c) == _Grunnable);
 	return c;
 };
 
@@ -134,7 +134,7 @@ uint32 readgstatus(g *gp)
 void casgstatus(g *gp, uint32 oldval, uint32 newval)
 {
 	// printf("cas g%d from %d to %d\n",gp->id,oldval,newval);
-	atomic_store(&gp->atomicstatus,newval);
+	atomic_store(&gp->atomicstatus, newval);
 }
 
 void mcall(void (*f)(g *))
@@ -155,7 +155,7 @@ void mcall(void (*f)(g *))
 
 void goexit0(g *gp)
 {
-	assert(gp==getg()->m->curg);
+	assert(gp == getg()->m->curg);
 	debugf("goexit0\n");
 	assert(readgstatus(gp) == _Grunning);
 	casgstatus(gp, _Grunning, _Gdead);
@@ -177,7 +177,7 @@ void goexit()
 
 void goschedImpl(g *gp)
 {
-	assert(gp==getg()->m->curg);
+	assert(gp == getg()->m->curg);
 	assert(readgstatus(gp) == _Grunning);
 	casgstatus(gp, _Grunning, _Grunnable);
 	runqput(gp->m->p, gp);
@@ -239,7 +239,7 @@ void schedinit()
 	for (int i = 0; i < MAXPROC; i++) {
 		p *_p_ = newT(p);
 		// memset(allp[i], 0, sizeof(p));
-		pthread_mutex_init(&_p_->mu,0);
+		pthread_mutex_init(&_p_->mu, 0);
 		_p_->id = i;
 		_p_->link = sched.pidle;
 		if (i != 0) {

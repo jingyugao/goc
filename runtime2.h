@@ -20,7 +20,7 @@ typedef struct {
 } Stack;
 
 typedef struct {
-	_Atomic	uint32 atomicstatus;
+	_Atomic uint32 atomicstatus;
 	int id;
 	Context ctx;
 	Func fn;

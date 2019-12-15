@@ -3,6 +3,22 @@
 #include "test.h"
 #include "../sync.h"
 
+//-------------------------------------------------------
+// todo:move to runtime_api.h
+int main() __asm__("_main_main");
+void __attribute__((no_instrument_function))
+__cyg_profile_func_enter(void *this_func, void *call_site)
+{
+	// printf("%s\n",this_func);
+}
+
+void __attribute__((no_instrument_function))
+__cyg_profile_func_exit(void *this_func, void *call_site)
+{
+	
+}
+//-------------------------------------------
+
 semaphore sema;
 int semaval = 0;
 
@@ -13,7 +29,6 @@ _Atomic int atomicnum = 0;
 void f()
 {
 	for (int i = 0; i < 5000; i++) {
-		usleep(500 * 1000);
 		num++;
 		atomic_fetch_add(&atomicnum, 1);
 		semaphore_down(&sema);
@@ -23,7 +38,6 @@ void f()
 	semaphore_up(&waitgroup);
 }
 
-int main() __asm__("_main_main");
 // user main go routinue
 int main()
 {
