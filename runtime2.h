@@ -2,10 +2,13 @@
 #define RUNTIME2_H
 
 #include <pthread.h>
-
+#include <stdatomic.h>
 #include "context.h"
 #include "mess.h"
-#define MAXPROC (2)
+
+#ifndef MAXPROC
+#define MAXPROC (16)
+#endif
 
 typedef struct {
 	uintptr f;
@@ -20,7 +23,8 @@ typedef struct {
 } Stack;
 
 typedef struct {
-	uint32 atomicstatus;
+	_Atomic uint32 atomicstatus;
+	bool preempt;
 	int id;
 	Context ctx;
 	Func fn;
@@ -28,6 +32,7 @@ typedef struct {
 	int64 when;
 	struct m *m;
 
+	bool is_g0;
 } g;
 
 typedef struct p {
@@ -40,7 +45,7 @@ typedef struct p {
 	int runqtail;
 	g *runq[256];
 
-	g *curg;
+	int64 sched_when;
 
 	vector timers;
 	pthread_mutex_t timerslock;
@@ -67,6 +72,9 @@ typedef struct {
 	pthread_mutex_t lock;
 	_Atomic int npidle;
 	p *pidle;
+	g *gfree;
+
+	_Atomic int preempt_enable;
 } schedt;
 extern schedt sched;
 extern m *allm;

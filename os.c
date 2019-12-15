@@ -1,7 +1,8 @@
 #include "runtime.h"
 #include <pthread.h>
 #include <stdlib.h>
-
+#include"time2.h"
+#include"runtime2.h"
 void mstart_stub(m *mp)
 {
 	settls(&mp->tls);
@@ -11,9 +12,30 @@ void mstart_stub(m *mp)
 
 void sysmon()
 {
+	int timeslice=10*Millisecond;
 	while (1) {
-		printf("sysmon\n");
-		sleep(1);
+		usleep(200);
+		if(!preempt_enable()){
+			continue;
+		}
+		int64 now=nanotime();
+		for (int i = 0; i < MAXPROC; i++) {
+			p *_p_=allp[i];
+			if(!_p_){
+				printf("p nil\n");
+				continue;
+			}
+			if(_p_->sched_when+timeslice<now){
+				m*_m_=_p_->m;
+				if(!_m_){
+					printf("m nil\n");
+					continue;
+				}
+				if (_m_->curg){
+					_m_->curg->preempt=true;
+				}
+			}
+		}
 	}
 }
 

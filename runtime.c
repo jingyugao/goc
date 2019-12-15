@@ -34,30 +34,13 @@ tls *gettls()
 	return (tls *)pthread_getspecific(VirFSReg);
 }
 
-p *getP()
-{
-	return getg()->m->p;
-};
-
 // ctx must be within g struct
 void gogo(Context *ctx)
 {
 	g *gp = container_of(ctx, g, ctx);
-	// g *gp = (g *)((void *)ctx - (void *)(&((g *)NULL)->ctx));
 	tls *tls = gettls();
 	tls->ptr[0] = (uintptr)gp;
 	GetContext(ctx);
-}
-
-void SwitchTo(g *from, g *to)
-{
-	to->m = from->m;
-	debugf("switch %d to %d\n", from->id, to->id);
-	int ret = SaveContext(&from->ctx);
-	debugf("ret,%d\n", ret);
-	if (ret == 0) {
-		gogo(&to->ctx);
-	}
 }
 
 int allocGID()
@@ -104,9 +87,7 @@ g *malg()
 
 void runqput(p *p, g *g)
 {
-	if (g->id == 0) {
-		abort();
-	}
+	assert(readgstatus(g) == _Grunnable);
 	pthread_mutex_lock(&p->mu);
 	int h = p->runqhead;
 	int t = p->runqtail;
@@ -119,44 +100,51 @@ void runqput(p *p, g *g)
 		return;
 	}
 
-	panicf("runq overflow\n");
+	pthread_mutex_unlock(&p->mu);
+	printf("runq overflow\n");
 
 	// put to global runq
 };
 
-g *runqget(p *p)
+g *runqget(p *_p_)
 {
-	debugf("runqget:%p\n", p);
-	pthread_mutex_lock(&p->mu);
-	if (p->runqhead == p->runqtail) {
-		pthread_mutex_unlock(&p->mu);
+	debugf("runqget:%p\n", _p_);
+	pthread_mutex_lock(&_p_->mu);
+	if (_p_->runqhead == _p_->runqtail) {
+		pthread_mutex_unlock(&_p_->mu);
 		return NULL;
 	}
-	int size = (sizeof(p->runq) / sizeof(p->runq[0]));
-	g *c = p->runq[p->runqhead % size];
-	p->runqhead++;
-	pthread_mutex_unlock(&p->mu);
+	int size = (sizeof(_p_->runq) / sizeof(_p_->runq[0]));
+	g *c = _p_->runq[_p_->runqhead % size];
+	_p_->runqhead++;
+	pthread_mutex_unlock(&_p_->mu);
 	debugf("runqget end\n");
+	if (readgstatus(c) != _Grunnable) {
+		printf("g:%d,%p\a", readgstatus(c), c->m);
+	}
+	assert(readgstatus(c) == _Grunnable);
 	return c;
+};
+
+uint32 readgstatus(g *gp)
+{
+	return atomic_load(&gp->atomicstatus);
 }
 
 void casgstatus(g *gp, uint32 oldval, uint32 newval)
 {
-	gp->atomicstatus = newval;
+	// printf("cas g%d from %d to %d\n",gp->id,oldval,newval);
+	atomic_store(&gp->atomicstatus, newval);
 }
 
 void mcall(void (*f)(g *))
 {
 	g *gp = getg();
+	assert(gp->m);
 	g *g0 = gp->m->g0;
-	int ret = SaveContext(&gp->ctx);
-	// Context *ctx=&g0->ctx;
-	printf("156 %d\n", g0->id);
 	g0->ctx.reg.pc = (uintptr)f;
 	g0->ctx.reg.rdi = (uintptr)gp;
-	// g0->ctx.buffer[7]=(uintptr)f;
-	// g0->ctx.buffer[8]=(uintptr)gp;
-	printf("159\n");
+	int ret = SaveContext(&gp->ctx);
 	if (ret == 0) {
 		tls *tls = gettls();
 		tls->ptr[0] = (uintptr)g0;
@@ -167,8 +155,12 @@ void mcall(void (*f)(g *))
 
 void goexit0(g *gp)
 {
+	assert(gp == getg()->m->curg);
 	debugf("goexit0\n");
-	casgstatus(gp, gp->atomicstatus, _Gdead);
+	assert(readgstatus(gp) == _Grunning);
+	casgstatus(gp, _Grunning, _Gdead);
+	dropg();
+	// put g to cache
 	schedule();
 }
 
@@ -185,7 +177,11 @@ void goexit()
 
 void goschedImpl(g *gp)
 {
+	assert(gp == getg()->m->curg);
+	assert(readgstatus(gp) == _Grunning);
+	casgstatus(gp, _Grunning, _Grunnable);
 	runqput(gp->m->p, gp);
+	dropg();
 	schedule();
 }
 
@@ -243,6 +239,7 @@ void schedinit()
 	for (int i = 0; i < MAXPROC; i++) {
 		p *_p_ = newT(p);
 		// memset(allp[i], 0, sizeof(p));
+		pthread_mutex_init(&_p_->mu, 0);
 		_p_->id = i;
 		_p_->link = sched.pidle;
 		if (i != 0) {
@@ -254,6 +251,7 @@ void schedinit()
 
 	_g_->m->p = allp[0];
 	allp[0]->m = _g_->m;
+	atomic_store(&sched.preempt_enable, 1);
 }
 
 int main_main();
@@ -317,6 +315,7 @@ void check_timers(p *pp, int64 ns)
 // must on g0
 void schedule()
 {
+	assert(getg()->is_g0);
 	debugf("schedule %d\n", getg()->m->p->id);
 	while (1) {
 		g *nextg = findRunnable();
@@ -325,14 +324,21 @@ void schedule()
 			debugf("p%d no co to run:\n", getg()->m->p->id);
 			continue;
 		}
+		assert(readgstatus(nextg) == _Grunnable);
 		execute(nextg);
 		panicf("return from execute\n");
 	}
 }
 
+bool preempt_enable()
+{
+	return atomic_load(&sched.preempt_enable) == 1;
+}
+
 void wakeg(g *gp)
 {
 	p *_p_ = getg()->m->p;
+	casgstatus(gp, _Gwaiting, _Grunnable);
 	runqput(_p_, gp);
 }
 
@@ -389,6 +395,7 @@ int rt0_go()
 	fg0.f = (uintptr)schedule;
 	g0 = malg();
 	g0->id = -g0->id;
+	g0->is_g0 = true;
 	m *m0 = newT(m);
 	settls(&m0->tls);
 	m0->tls.ptr[0] = (uintptr)g0;

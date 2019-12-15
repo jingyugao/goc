@@ -12,11 +12,13 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdatomic.h>
+#include <assert.h>
 
 // #define DEBUG_RT
 static void *zalloc(size_t size)
 {
 	void *p = malloc(size);
+	assert(p);
 	memset(p, 0, size);
 	return p;
 }
