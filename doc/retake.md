@@ -19,7 +19,13 @@
 
 ### 抢占
 gcc -finstrument-functions
-此标志会在编译时，在函数入口处插入代码。调用hook函数。
+此标志会在编译时，在函数入口处插入以下代码。调用hook函数。
+```asm
+	leaq	_f(%rip), %rax
+	movq	8(%rbp), %rsi // 参数2,栈地址
+	movq	%rax, %rdi // 参数1,函数地址
+	callq	___cyg_profile_func_enter
+```
 
 ## 问题
 1. 主动让出时间片的协程应该比被动让出的要友好。应该多被调度。
